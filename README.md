@@ -139,7 +139,7 @@ Set `capture_exceptions = false` to disable automatic capture, or `capture_excep
 
 ```gdscript
 var delivered := await PostHog.flush()
-PostHog.shutdown() # Stops immediately; retains undelivered disk events.
+PostHog.shutdown() # Queues pending errors and retains undelivered disk events; no network wait.
 
 # Instead of get_tree().quit(), to attempt delivery before exiting:
 PostHog.quit()
@@ -148,6 +148,8 @@ PostHog.quit()
 Events are persisted at capture time and sent to `/batch/` after 20 events or 30 seconds by default, in batches of 50. Up to 1,000 events are retained; overflow evicts the oldest. Delivery is at-least-once with stable UUIDs, not guaranteed exactly-once.
 
 Network/server failures, HTTP 408, and HTTP 429 retain events with bounded exponential backoff; numeric `Retry-After` is honored. HTTP 413 splits batches and drops an individually oversized event. Other 4xx errors discard the rejected batch. `events_dropped(count, reason)` reports overflow/permanent HTTP drops. `flush()` returns false on failures, opt-out, or active backoff, and coalesces concurrent flushes. Redirects are not followed: configure the ingestion host directly.
+
+`flush()` first transfers pending automatic errors through the normal capture pipeline, including `before_send`. Normal shutdown stops the logger and queues its remaining errors before teardown, persisting them when persistence is enabled. `PostHog.quit()` does this before its final delivery attempt. Opt-out discards pending errors instead.
 
 The addon processes networking even while the scene tree is paused. OS background notifications trigger a best-effort flush. Window close is intercepted for up to `flush_on_quit_timeout_seconds` (3 seconds) only if the game has not already disabled `SceneTree.auto_accept_quit`. `SceneTree.quit()` bypasses this interception; call `PostHog.quit()` or flush explicitly. Mobile force-kill and browser tab close cannot guarantee a final request. Persistent events are retried on a later launch.
 

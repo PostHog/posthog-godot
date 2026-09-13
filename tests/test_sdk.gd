@@ -28,6 +28,7 @@ func _run() -> void:
 	await _test_flag_races()
 	await _test_lifecycle_and_errors()
 	preload("test_error_logger.gd").run(check)
+	await _test_error_shutdown()
 	await _test_http()
 	_remove_directory(_test_path)
 	print("PostHog tests: %d checks, %d failures" % [checks, failures])
@@ -700,6 +701,100 @@ func _test_lifecycle_and_errors() -> void:
 	node.opt_out()
 	check(node._logger == null, "logger removed on opt out")
 	await dispose(node)
+
+
+func _test_error_shutdown() -> void:
+	var settings := config()
+	settings.capture_exceptions = true
+	settings.persistence = true
+	settings.storage_path = _test_path + "-shutdown"
+	settings.before_send = func(event: Dictionary):
+		event.properties.scrubbed = true
+		return event
+	var node := client(settings)
+	var logger: Logger = node._logger
+	var queue: Node = node._queue
+	_pending_error(node, "shutdown-error")
+	node.shutdown()
+	check(queue.events.size() == 1, "shutdown transfers pending automatic error to queue")
+	check(logger.drain().is_empty(), "shutdown empties detached logger")
+	logger._log_error(
+		"save", "res://game.gd", 10, "late-error", "", false, Logger.ERROR_TYPE_SCRIPT, []
+	)
+	check(logger.drain().is_empty(), "detached logger rejects late callbacks")
+	node.queue_free()
+	await process_frame
+	node = client(settings)
+	check(node.queued_event_count == 1, "shutdown error survives restart")
+	if node.queued_event_count == 1:
+		check(
+			node._queue.events[0].properties.scrubbed, "shutdown error passes through before_send"
+		)
+	node.opt_out()
+	node.opt_in()
+	var network := mock(node)
+	_pending_error(node, "flush-error")
+	await node.flush()
+	check(network.calls.size() == 1, "explicit flush drains same-frame automatic error")
+	if network.calls.size() == 1:
+		check(
+			network.calls[0].body.batch[0].properties["$exception_message"] == "flush-error",
+			"flush sends pending error"
+		)
+	_pending_error(node, "discard-on-opt-out")
+	node.opt_out()
+	await dispose(node)
+	node = client(settings)
+	check(
+		node.is_opted_out and node.queued_event_count == 0,
+		"opt-out pending errors never reach disk"
+	)
+	await dispose(node)
+	_remove_directory(settings.storage_path)
+
+	settings = config()
+	settings.capture_exceptions = true
+	node = client(settings)
+	queue = node._queue
+	node._config.before_send = func(event: Dictionary):
+		node.shutdown()
+		return event
+	_pending_error(node, "reentrant-shutdown")
+	node.shutdown()
+	check(
+		queue.events.size() == 1 and not node.is_initialized,
+		"shutdown callback cannot recursively drain or tear down the client"
+	)
+	node.queue_free()
+	await process_frame
+
+	node = client(settings)
+	queue = node._queue
+	node._config.before_send = func(event: Dictionary):
+		node.opt_out()
+		return event
+	_pending_error(node, "consent-changed-1")
+	_pending_error(node, "consent-changed-2")
+	node.shutdown()
+	check(queue.events.is_empty(), "opt-out during shutdown drain discards all pending errors")
+	node.queue_free()
+	await process_frame
+
+	settings.persistence = true
+	settings.storage_path = _test_path + "-exit"
+	node = client(settings)
+	_pending_error(node, "tree-exit-error")
+	node.free()
+	await process_frame
+	node = client(settings)
+	check(node.queued_event_count == 1, "tree exit persists pending automatic errors")
+	await dispose(node)
+	_remove_directory(settings.storage_path)
+
+
+func _pending_error(node: Node, message: String) -> void:
+	var logger: Logger = node._logger
+	logger._log_error("save", "res://game.gd", 10, message, "", false, Logger.ERROR_TYPE_SCRIPT, [])
 
 
 func _emit_automatic_error() -> void:

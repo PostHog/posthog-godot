@@ -44,6 +44,7 @@ var _backgrounded: bool = false
 var _quitting: bool = false
 var _owns_quit: bool = false
 var _in_before_send: bool = false
+var _shutting_down: bool = false
 var _setup_generation: int = 0
 
 
@@ -59,8 +60,8 @@ func _ready() -> void:
 
 
 func setup(config: PostHogConfig) -> bool:
-	if is_initialized:
-		Utils.warn("Already initialized; call shutdown before setting up again")
+	if is_initialized or _shutting_down:
+		Utils.warn("Already initialized or shutting down; finish shutdown before setting up again")
 		return false
 	if config == null or not is_inside_tree():
 		Utils.warn("setup requires a config and a Node inside the scene tree")
@@ -324,6 +325,7 @@ func opt_in() -> void:
 func flush() -> bool:
 	if not _can_capture():
 		return false
+	_drain_errors()
 	return await _queue.flush()
 
 
@@ -446,12 +448,13 @@ func capture_exception(
 
 ## Stops immediately, retaining unsent events on disk. Call await flush() first when needed.
 func shutdown() -> void:
-	if not is_initialized:
+	if not is_initialized or _shutting_down:
 		return
+	_shutting_down = true
+	_stop_logger(true)
 	is_initialized = false
 	_setup_generation += 1
 	is_opted_out = true
-	_stop_logger()
 	_flags.enabled = false
 	_flags.invalidate(false)
 	_queue.stop()
@@ -463,6 +466,7 @@ func shutdown() -> void:
 	_owns_quit = false
 	_session.reset()
 	_identity.clear()
+	_shutting_down = false
 
 
 ## Unlike SceneTree.quit(), waits briefly for delivery. Unsent events remain on disk.
@@ -470,6 +474,7 @@ func quit(exit_code: int = 0) -> void:
 	if _quitting:
 		return
 	_quitting = true
+	_stop_logger(true)
 	if _can_capture() and _config.flush_on_quit:
 		var deadline := Time.get_ticks_msec() + int(_config.flush_on_quit_timeout_seconds * 1000)
 		flush()
@@ -491,9 +496,20 @@ func _notification(what: int) -> void:
 
 
 func _process(_delta: float) -> void:
+	_drain_errors()
+
+
+func _drain_errors() -> void:
 	if _logger != null:
-		for error in _logger.drain():
-			capture_exception(error.message, {}, error.type, error.frames, false)
+		_capture_errors(_logger.drain())
+
+
+func _capture_errors(errors: Array) -> void:
+	var generation := _setup_generation
+	for error in errors:
+		if generation != _setup_generation or not _can_capture():
+			break
+		capture_exception(error.message, {}, error.type, error.frames, false)
 
 
 func _exit_tree() -> void:
@@ -594,7 +610,9 @@ func _set_backgrounded(value: bool) -> void:
 
 func _start_logger() -> void:
 	if (
-		not _config.capture_exceptions
+		_shutting_down
+		or _quitting
+		or not _config.capture_exceptions
 		or (OS.has_feature("editor") and not _config.capture_exceptions_in_editor)
 	):
 		return
@@ -603,11 +621,15 @@ func _start_logger() -> void:
 	OS.add_logger(_logger)
 
 
-func _stop_logger() -> void:
-	if _logger != null:
-		_logger.disable()
-		OS.remove_logger(_logger)
-		_logger = null
+func _stop_logger(preserve_pending: bool = false) -> void:
+	if _logger == null:
+		return
+	var logger := _logger
+	_logger = null
+	var pending: Array = logger.disable()
+	OS.remove_logger(logger)
+	if preserve_pending:
+		_capture_errors(pending)
 
 
 func _emit_cached_flags(generation: int) -> void:

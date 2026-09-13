@@ -105,8 +105,10 @@ func drain() -> Array:
 	return result
 
 
-func disable() -> void:
+func disable() -> Array:
 	_mutex.lock()
 	_enabled = false
-	_pending.clear()
+	var result := _pending
+	_pending = []
 	_mutex.unlock()
+	return result

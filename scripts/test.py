@@ -79,10 +79,27 @@ def main():
                 timeout=90,
             )
             print(result.stdout + result.stderr)
+            quit_result = subprocess.run(
+                [
+                    godot,
+                    "--headless",
+                    "--path",
+                    str(ROOT),
+                    "--script",
+                    "res://tests/test_error_quit.gd",
+                ],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            print(quit_result.stdout + quit_result.stderr)
         finally:
             server.shutdown()
             thread.join()
-    output = result.stdout + result.stderr
+    output = result.stdout + result.stderr + quit_result.stdout + quit_result.stderr
+    if quit_result.returncode:
+        return quit_result.returncode
     if result.returncode:
         return result.returncode
     if any(
@@ -100,7 +117,10 @@ def main():
         return 1
     batches = [body for path, body, _ in requests if path == "/batch/"]
     flags = [body for path, body, _ in requests if path == "/flags/?v=2"]
-    assert len(batches) == 1 and len(flags) == 1, requests
+    assert len(batches) == 2 and len(flags) == 1, requests
+    quit_event = batches[1]["batch"][0]
+    assert quit_event["event"] == "$exception"
+    assert quit_event["properties"]["$exception_message"] == "quit-error"
     assert all(content_type == "application/json" for _, _, content_type in requests)
     assert batches[0]["api_key"] == "phc_test"
     event = batches[0]["batch"][0]
