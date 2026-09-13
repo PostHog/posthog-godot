@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install Godot 4.5
+        run: |
+          curl --fail --location --retry 3 \
+            https://github.com/godotengine/godot/releases/download/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip \
+            --output /tmp/godot.zip
+          echo 'c7316e1fd782ad276a4d985a7673b5976eaaa8d90561a2bea5289210dc53e9ba  /tmp/godot.zip' | sha256sum --check
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          echo 'GODOT=/tmp/godot/Godot_v4.5-stable_linux.x86_64' >> "$GITHUB_ENV"
+      - name: Install development tools
+        run: |
+          python3 -m venv /tmp/posthog-tools
+          /tmp/posthog-tools/bin/pip install gdtoolkit==4.5.0 ruff==0.12.11
+          echo '/tmp/posthog-tools/bin' >> "$GITHUB_PATH"
+      - name: Lint and format
+        run: |
+          gdformat --check addons tests examples
+          gdlint addons tests examples
+          ruff check scripts
+          ruff format --check scripts
+      - name: Headless unit and HTTP integration tests
+        run: python3 scripts/test.py
+      - name: Example smoke test (no API key)
+        run: "$GODOT --headless --path . --quit-after 3"
+      - name: Package addon
+        run: python3 scripts/package.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: posthog-godot
+          path: dist/*.zip
+          if-no-files-found: error

@@ -1,0 +1,38 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
+[application]
+
+config/name="PostHog Godot SDK"
+config/version="0.1.0"
+run/main_scene="res://examples/basic_usage.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[autoload]
+
+PostHog="*res://addons/posthog/posthog.gd"
+
+[display]
+
+window/size/viewport_width=800
+window/size/viewport_height=480
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/posthog/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
