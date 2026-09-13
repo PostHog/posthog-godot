@@ -5,7 +5,7 @@
 
 A native **Godot 4.5+ GDScript addon** for PostHog, based on the [PostHog Unity SDK](https://github.com/PostHog/posthog-unity). No .NET, native libraries, or runtime dependencies required.
 
-**Initial implementation (0.1.0).** Unit tests are verified locally with Godot 4.5 and 4.7.2, plus real macOS and Chromium Web release exports against local HTTP servers. CI includes Windows/macOS/Linux release-export checks and browser tests. Mobile exports, other browsers, and production PostHog ingestion remain unvalidated. See [feature parity and limitations](docs/unity-parity.md).
+**Initial implementation (0.1.0).** Unit tests are verified locally with Godot 4.5 and 4.7.2, plus real macOS and Chromium Web release exports against local HTTP servers. CI includes Windows/macOS/Linux release-export checks and browser tests. Android emulator and iOS simulator release smoke tests also pass against US Cloud (iOS requires a custom ARM64 Godot simulator library). Physical devices, other browsers, and downstream ingestion/error grouping still need validation. See [feature parity and limitations](docs/unity-parity.md).
 
 ## Features
 
@@ -21,6 +21,8 @@ A native **Godot 4.5+ GDScript addon** for PostHog, based on the [PostHog Unity 
 - Editor plugin, resource-based configuration, and graceful quit
 
 **Session replay is intentionally excluded.**
+
+A reusable [mobile smoke-test sample](examples/mobile_smoke/README.md) covers identity, persistence, consent, flags, and automatic errors without committing project keys.
 
 ## Install
 

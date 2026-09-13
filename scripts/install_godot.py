@@ -53,6 +53,7 @@ def verified_archive(path, name, expected):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--templates", action="store_true")
+    parser.add_argument("--mobile-templates", action="store_true")
     parser.add_argument("--directory", type=Path, default=Path(".cache/godot"))
     args = parser.parse_args()
     directory = args.directory.resolve()
@@ -64,18 +65,28 @@ def main():
     godot = directory / "editor" / executable
     godot.chmod(0o755)
     values = {"GODOT": str(godot)}
-    if args.templates:
+    if args.templates or args.mobile_templates:
         name = f"Godot_v{VERSION}_export_templates.tpz"
         source = Path(os.environ.get("GODOT_TEMPLATE_ARCHIVE", directory / name))
         with verified_archive(source, name, TEMPLATE_SHA) as archive:
-            names = {"templates/web_nothreads_release.zip"}
-            names.add(
-                {
-                    "linux": "templates/linux_release.x86_64",
-                    "darwin": "templates/macos.zip",
-                    "win32": "templates/windows_release_x86_64.exe",
-                }[sys.platform]
-            )
+            names = set()
+            if args.templates:
+                names.add("templates/web_nothreads_release.zip")
+                names.add(
+                    {
+                        "linux": "templates/linux_release.x86_64",
+                        "darwin": "templates/macos.zip",
+                        "win32": "templates/windows_release_x86_64.exe",
+                    }[sys.platform]
+                )
+            if args.mobile_templates:
+                names.update(
+                    {
+                        "templates/android_debug.apk",
+                        "templates/android_release.apk",
+                        "templates/ios.zip",
+                    }
+                )
             for member in names:
                 archive.extract(member, directory)
         values["GODOT_TEMPLATES"] = str(directory / "templates")

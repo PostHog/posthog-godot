@@ -48,6 +48,10 @@ Browser tests run the exported WebAssembly game in Chromium, not an editor build
 
 The Web exports are written to `dist/export-tests/web`; desktop artifacts go under `dist/export-tests/desktop`. Playwright reports and failure traces go under `tests/web/playwright-report` and `tests/web/test-results`. CI uploads browser reports. To diagnose a local browser-install issue, `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` can select an existing Chromium executable; CI uses Playwright's pinned headless shell. Node.js 22 is recommended for both installation and execution.
 
+## Mobile smoke tests
+
+See [examples/mobile_smoke](examples/mobile_smoke/README.md) for a persistent portrait test app, token-safe preparation, an automated Android runner, and the iOS ARM64 simulator build workaround. These tests use a real project only when you explicitly provide `POSTHOG_API_KEY`; they are not part of CI. Generated apps, configuration, signing keys, and reports stay under ignored `dist/`.
+
 ## Layout
 
 - `addons/posthog/posthog.gd`: public autoload API, lifecycle, identity, enrichment

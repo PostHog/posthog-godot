@@ -44,7 +44,7 @@ Reference: local `posthog-unity`, commit [`3bfd43e0948ee170655ac6a308e29b0da7d84
 
 ## Platform status and requirements
 
-The addon uses Godot's cross-platform HTTPRequest/FileAccess APIs. **Real macOS release exports and Chromium Web release exports have been verified locally**, in addition to headless unit tests. CI is configured to run unit tests and actual release exports on Windows, macOS, and Linux, plus browser tests against Web exports. Mobile exports and other browsers remain unverified.
+The addon uses Godot's cross-platform HTTPRequest/FileAccess APIs. **Real macOS release exports and Chromium Web release exports have been verified locally**, in addition to headless unit tests. CI is configured to run unit tests and actual release exports on Windows, macOS, and Linux, plus browser tests against Web exports. The [mobile smoke sample](../examples/mobile_smoke/README.md) passed 47 client-side assertions on both an Android 16 ARM64 emulator and an iPhone 17 Pro / iOS 26.4 simulator using US Cloud. The iOS run used a locally compiled Godot 4.5 ARM64 release simulator library because the official template lacks that architecture. Physical devices and other browsers remain unverified.
 
 - **Android:** enable the Internet permission in your export preset. Force-stop may prevent final delivery.
 - **iOS/macOS sandboxed exports:** enable outgoing network access as required by the export entitlements. Use HTTPS; plain HTTP can be blocked by platform policy.
@@ -53,7 +53,7 @@ The addon uses Godot's cross-platform HTTPRequest/FileAccess APIs. **Real macOS 
 - **Threads:** public API and filesystem/network state are main-thread only. Use `call_deferred()` from workers. Only the automatic Logger callback is internally synchronized.
 - **Networking:** requests have a 5 MiB response-size limit and do not follow redirects. Proxies must expose `/batch/` and `/flags/?v=2` under the configured host/prefix.
 
-Before a production release, validate real ingestion/experiment attribution/error grouping against a test PostHog project, run mobile and additional-browser export smoke tests, and wire up the PostHog SDK compliance harness. The included tests validate local wire format and behavior, not server-side ingestion or full SDK compliance certification.
+Before a production release, validate real ingestion/experiment attribution/error grouping against a test PostHog project, run physical-device and additional-browser export smoke tests, and wire up the PostHog SDK compliance harness. The automated tests validate wire format and client behavior. The mobile sample additionally checks live HTTP acknowledgement; it cannot prove downstream processing, error grouping, or full SDK compliance certification.
 
 ## Attribution
 

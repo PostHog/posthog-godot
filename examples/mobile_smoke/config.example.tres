@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="PostHogConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/posthog/posthog_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+api_key = ""
+host = "https://us.i.posthog.com"
+preload_feature_flags = false
+capture_application_lifecycle_events = false
+flush_interval_seconds = 3600.0
+flush_at = 100
+flush_on_quit = false
+request_timeout_seconds = 20.0
+feature_flag_request_retries = 0
