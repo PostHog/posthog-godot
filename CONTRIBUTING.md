@@ -16,7 +16,7 @@ GODOT=/path/to/godot python3 scripts/test.py
 
 The runner imports the project, starts a Python HTTP server bound only to loopback on an ephemeral port, and executes the headless GDScript tests plus an isolated quit/flush subprocess. It never contacts PostHog or uses a real API key. Tests cover analytics enrichment, UUIDs, identity, consent, sessions, persistence, flag parsing/payloads/metadata, cancellation races, retries, queue overflow, error capture, lifecycle, and actual HTTP request serialization. A nonzero exit indicates a failure, script error, timeout, or resource leak.
 
-Two `ERROR: Expected ...` log messages are intentional: they exercise the actual Godot Logger integration. The final test summary and HTTP assertions must pass. Temporary test state lives under a unique `user://posthog-tests-*` path and is removed on success. Interrupted runs may leave those directories behind.
+The `ERROR: Expected ...` log messages are intentional: they exercise the actual Godot Logger integration and feedback-loop protection. The final test summary and HTTP assertions must pass. Temporary test state lives under a unique `user://posthog-tests-*` path and is removed on success. Interrupted runs may leave those directories behind.
 
 ```sh
 uvx --from gdtoolkit==4.5.0 gdformat --check addons tests examples

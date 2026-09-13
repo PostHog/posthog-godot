@@ -29,6 +29,7 @@ func _run() -> void:
 	await _test_lifecycle_and_errors()
 	preload("test_error_logger.gd").run(check)
 	await _test_error_shutdown()
+	await _test_error_callbacks()
 	await _test_http()
 	_remove_directory(_test_path)
 	print("PostHog tests: %d checks, %d failures" % [checks, failures])
@@ -792,6 +793,49 @@ func _test_error_shutdown() -> void:
 	_remove_directory(settings.storage_path)
 
 
+func _test_error_callbacks() -> void:
+	var settings := config()
+	settings.capture_exceptions = true
+	var node := client(settings)
+	node._config.before_send = func(event: Dictionary):
+		_emit_forwarding_error()
+		return event
+	node.feature_flags_loaded.connect(_emit_automatic_error)
+	node._flags.loaded.emit()
+	node._process(0)
+	check(
+		node.queued_event_count == 1, "customer signal callback error retained despite SDK ancestry"
+	)
+	check(
+		node._logger.drain().is_empty(),
+		"errors during automatic-error forwarding do not feed back into logger"
+	)
+	if node.queued_event_count == 1:
+		var frames: Array = node._queue.events[0].properties["$exception_list"][0].stacktrace.frames
+		check(
+			(
+				frames.size() >= 2
+				and not frames.back().in_app
+				and not frames.back().filename.begins_with("res://")
+			),
+			"native origin is newest frame in serialized exception"
+		)
+	_pending_error(node, "after-forwarding")
+	node._process(0)
+	check(node.queued_event_count == 2, "logger resumes normal capture after forwarding")
+	var logger: Logger = node._logger
+	node._config.before_send = func(event: Dictionary):
+		node.opt_out()
+		return event
+	_pending_error(node, "opt-out-during-forwarding")
+	node._process(0)
+	check(
+		node.is_opted_out and node.queued_event_count == 0 and logger._blocked_threads.is_empty(),
+		"opt-out during forwarding releases guard and discards events"
+	)
+	await dispose(node)
+
+
 func _pending_error(node: Node, message: String) -> void:
 	var logger: Logger = node._logger
 	logger._log_error("save", "res://game.gd", 10, message, "", false, Logger.ERROR_TYPE_SCRIPT, [])
@@ -799,6 +843,10 @@ func _pending_error(node: Node, message: String) -> void:
 
 func _emit_automatic_error() -> void:
 	push_error("Expected PostHog automatic error capture test")
+
+
+func _emit_forwarding_error() -> void:
+	push_error("Expected PostHog forwarding error")
 
 
 func _test_http() -> void:

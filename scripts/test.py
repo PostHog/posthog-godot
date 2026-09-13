@@ -107,7 +107,10 @@ def main():
         for marker in ["SCRIPT ERROR:", "instances leaked", "still in use at exit"]
     ):
         return 1
-    expected_errors = {"ERROR: Expected PostHog automatic error capture test"}
+    expected_errors = {
+        "ERROR: Expected PostHog automatic error capture test",
+        "ERROR: Expected PostHog forwarding error",
+    }
     if any(
         line.startswith("ERROR:") and line not in expected_errors
         for line in output.splitlines()

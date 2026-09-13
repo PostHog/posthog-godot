@@ -505,11 +505,18 @@ func _drain_errors() -> void:
 
 
 func _capture_errors(errors: Array) -> void:
+	if errors.is_empty():
+		return
+	var logger := _logger
+	if logger != null:
+		logger.begin_forwarding()
 	var generation := _setup_generation
 	for error in errors:
 		if generation != _setup_generation or not _can_capture():
 			break
 		capture_exception(error.message, {}, error.type, error.frames, false)
+	if logger != null:
+		logger.end_forwarding()
 
 
 func _exit_tree() -> void:

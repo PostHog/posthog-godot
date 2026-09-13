@@ -5,6 +5,7 @@ const MAX_EVENTS_PER_WINDOW = 20
 const RATE_WINDOW_MS = 10000
 const MAX_PENDING_ERRORS = 20
 const MAX_ERROR_KEYS = 128
+const MAX_STACK_FRAMES = 50
 
 var debounce_ms: int = 1000
 var _mutex := Mutex.new()
@@ -14,6 +15,7 @@ var _event_times: Array[int] = []
 var _last_frame: int = -1
 var _frame_events: int = 0
 var _enabled: bool = true
+var _blocked_threads: Dictionary = {}
 
 
 func _log_error(
@@ -26,34 +28,34 @@ func _log_error(
 	error_type: int,
 	script_backtraces: Array[ScriptBacktrace]
 ) -> void:
-	if error_type == ERROR_TYPE_WARNING or file.contains("addons/posthog/"):
+	if error_type == ERROR_TYPE_WARNING or _is_sdk_file(file):
 		return
+	var thread_id := OS.get_thread_caller_id()
 	_mutex.lock()
-	if not _enabled or _pending.size() >= MAX_PENDING_ERRORS:
+	if not _enabled or _pending.size() >= MAX_PENDING_ERRORS or _blocked_threads.has(thread_id):
 		_mutex.unlock()
 		return
-	var frames: Array = []
-	for backtrace in script_backtraces:
-		for index in range(mini(backtrace.get_frame_count(), 50)):
-			var filename := backtrace.get_frame_file(index)
-			if filename.contains("addons/posthog/"):
-				_mutex.unlock()
-				return
-			frames.append(
-				{
-					"source": filename,
-					"function": backtrace.get_frame_function(index),
-					"line": backtrace.get_frame_line(index)
-				}
-			)
-		if not frames.is_empty():
-			break
+	_blocked_threads[thread_id] = 1
+	_record_error(function, file, line, code, rationale, error_type, script_backtraces)
+	_blocked_threads.erase(thread_id)
+	_mutex.unlock()
+
+
+func _record_error(
+	function: String,
+	file: String,
+	line: int,
+	code: String,
+	rationale: String,
+	error_type: int,
+	script_backtraces: Array[ScriptBacktrace]
+) -> void:
+	var frames := _extract_frames(script_backtraces, file, function, line, error_type)
 	if frames.is_empty():
-		frames.append({"source": file, "function": function, "line": line})
+		return
 	var message := rationale if not rationale.is_empty() else code
 	var key := JSON.stringify([error_type, file, line, message]).sha256_text()
 	if not _accept_error(key, _now_ms(), _frame_number()):
-		_mutex.unlock()
 		return
 	_pending.append(
 		{
@@ -62,6 +64,65 @@ func _log_error(
 			"frames": frames
 		}
 	)
+
+
+func _extract_frames(
+	backtraces: Array[ScriptBacktrace], file: String, function: String, line: int, error_type: int
+) -> Array:
+	var selected := _select_backtrace(backtraces, file, line)
+	if selected != null and _is_sdk_file(selected.get_frame_file(0)):
+		return []
+	var frames: Array = []
+	var origin := {"source": file, "function": function, "line": line}
+	if error_type == ERROR_TYPE_ERROR:
+		frames.append(origin)
+	if selected != null:
+		for index in range(mini(selected.get_frame_count(), MAX_STACK_FRAMES - frames.size())):
+			frames.append(
+				{
+					"source": selected.get_frame_file(index),
+					"function": selected.get_frame_function(index),
+					"line": selected.get_frame_line(index)
+				}
+			)
+	if frames.is_empty():
+		frames.append(origin)
+	return frames
+
+
+func _select_backtrace(
+	backtraces: Array[ScriptBacktrace], file: String, line: int
+) -> ScriptBacktrace:
+	var selected: ScriptBacktrace
+	for backtrace in backtraces:
+		if backtrace == null or backtrace.get_frame_count() == 0:
+			continue
+		if backtrace.get_frame_file(0) == file and backtrace.get_frame_line(0) == line:
+			return backtrace
+		if selected == null or backtrace.get_frame_count() > selected.get_frame_count():
+			selected = backtrace
+	return selected
+
+
+func _is_sdk_file(file: String) -> bool:
+	return file.begins_with("res://addons/posthog/")
+
+
+func begin_forwarding() -> void:
+	_mutex.lock()
+	var thread_id := OS.get_thread_caller_id()
+	_blocked_threads[thread_id] = _blocked_threads.get(thread_id, 0) + 1
+	_mutex.unlock()
+
+
+func end_forwarding() -> void:
+	_mutex.lock()
+	var thread_id := OS.get_thread_caller_id()
+	var depth: int = _blocked_threads.get(thread_id, 0)
+	if depth <= 1:
+		_blocked_threads.erase(thread_id)
+	else:
+		_blocked_threads[thread_id] = depth - 1
 	_mutex.unlock()
 
 
