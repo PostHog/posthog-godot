@@ -39,9 +39,11 @@ func _ready() -> void:
 
 Use your **project API key**, never a personal API key. Initialization immediately captures lifecycle events and starts a flag request by default. For consent-first setup, set `config.opt_out_by_default = true` **before** calling `setup()`.
 
-Alternatively, create a **PostHogConfig** resource in the Inspector, save it as a `.tres`, and set the advanced Project Setting **Posthog → Config** (`posthog/config`) to its path. The autoload initializes from it before your scenes run. Do not also call `setup()` manually.
+Alternatively, create a **PostHogConfig** resource in the Inspector, save it as a `.tres`, and set the advanced Project Setting **Posthog → Config** (`posthog/config`) to its path. In exports, the autoload initializes from it before your scenes run. By default, `skip_auto_init_on_editor_play = true` skips this automatic initialization in editor builds, including games run with the editor executable from the command line. No identity, storage, networking, or error logger is initialized in that case. Set the option to `false` in the resource to intentionally enable development tracking. Explicit `setup()` calls always remain available; do not combine manual and automatic initialization.
 
 Without the editor plugin, add `res://addons/posthog/posthog.gd` as an autoload named `PostHog` yourself. Use one active client per storage namespace; the SDK does not coordinate concurrent processes writing the same storage directory.
+
+Events include `$godot_environment`: `editor_play`, `export_debug`, `export_release`, or `dedicated_server` (`editor` when running in editor-tool context). Headless mode alone does not identify a dedicated server. This metadata is also included in default feature-flag evaluation properties. Disabling `capture_exceptions_in_editor` only affects automatic errors; use the auto-initialization safeguard to avoid other development telemetry, and use a separate test project when calling `setup()` explicitly.
 
 ## Analytics and identity
 

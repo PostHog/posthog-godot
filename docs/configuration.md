@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | `api_key` | `""` (required) | PostHog project API key. |
 | `host` | `https://us.i.posthog.com` | HTTP(S) ingestion host; EU uses `https://eu.i.posthog.com`. Reverse-proxy path prefixes work. No query/fragment/credentials or redirects. Use HTTPS outside local testing. |
+| `skip_auto_init_on_editor_play` | `true` | Skip resource-based automatic initialization in editor builds (including command-line runs). Explicit `setup()` remains allowed. Exports are unaffected. |
 | `flush_at` | `20` | Queue threshold for sending (effective threshold cannot exceed queue capacity). |
 | `flush_interval_seconds` | `30` | Automatic flush interval; at least 1 second. |
 | `max_queue_size` | `1000` | Maximum retained events; oldest evicted on overflow. |
@@ -48,6 +49,8 @@ Signals:
 
 ## Metadata
 
-Captured events include `$lib`, `$lib_version`, `$os`, `$os_version`, `$device_type`, `$device_model`, `$screen_width`, `$screen_height`, `$app_name`, `$app_version`, `$app_build`, `$godot_version`, `$locale`, `$is_identified`, and `$process_person_profile`. Active sessions add `$session_id`; memberships add `$groups`.
+Captured events include `$lib`, `$lib_version`, `$os`, `$os_version`, `$device_type`, `$device_model`, `$screen_width`, `$screen_height`, `$app_name`, `$app_version`, `$app_build`, `$godot_version`, `$godot_environment`, `$locale`, `$is_identified`, and `$process_person_profile`. Active sessions add `$session_id`; memberships add `$groups`.
 
 Event properties override super properties. SDK-owned metadata then overrides both; `before_send` runs last. No screenshots, input text, local variables, advertising IDs, or hardware IDs are automatically collected.
+
+`$godot_environment` is detected from engine capabilities: `editor` for editor-tool context, `editor_play` for an editor binary running a game, `dedicated_server` for a server export, otherwise `export_debug` or `export_release`. Headless display does not change the classification. It is included in default flag properties unless `send_default_person_properties_for_flags` is disabled; explicit evaluation overrides still take precedence.

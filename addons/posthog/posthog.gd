@@ -13,6 +13,7 @@ const EventQueue = preload("internal/event_queue.gd")
 const Session = preload("internal/session.gd")
 const FeatureFlags = preload("internal/feature_flags.gd")
 const ErrorLogger = preload("internal/error_logger.gd")
+const RuntimeEnvironment = preload("internal/runtime_environment.gd")
 
 var is_initialized: bool = false
 var is_opted_out: bool = true
@@ -54,6 +55,8 @@ func _ready() -> void:
 	if not config_path.is_empty() and not is_initialized:
 		var resource := load(config_path)
 		if resource is PostHogConfig:
+			if resource.skip_auto_init_on_editor_play and _runtime_environment() == "editor_play":
+				return
 			setup(resource)
 		else:
 			Utils.warn("posthog/config must point to a PostHogConfig resource")
@@ -547,6 +550,7 @@ func _default_properties() -> Dictionary:
 		"$app_version": _app_version(),
 		"$app_build": _config.app_build,
 		"$godot_version": Engine.get_version_info().string,
+		"$godot_environment": _runtime_environment(),
 		"$locale": OS.get_locale()
 	}
 
@@ -568,12 +572,17 @@ func _flag_context() -> Dictionary:
 			"$os_version": OS.get_version(),
 			"$device_type": "Mobile" if OS.has_feature("mobile") else "Desktop",
 			"$lib": Utils.LIBRARY,
-			"$lib_version": Utils.VERSION
+			"$lib_version": Utils.VERSION,
+			"$godot_environment": _runtime_environment()
 		}
 	properties.merge(_person_properties.duplicate(true), true)
 	body.person_properties = properties
 	body.group_properties = _group_properties.duplicate(true)
 	return body
+
+
+func _runtime_environment() -> String:
+	return RuntimeEnvironment.detect()
 
 
 func _app_version() -> String:

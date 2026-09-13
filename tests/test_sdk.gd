@@ -30,6 +30,7 @@ func _run() -> void:
 	preload("test_error_logger.gd").run(check)
 	await _test_error_shutdown()
 	await _test_error_callbacks()
+	await preload("test_runtime_environment.gd").run(self)
 	await _test_http()
 	_remove_directory(_test_path)
 	print("PostHog tests: %d checks, %d failures" % [checks, failures])

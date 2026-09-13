@@ -10,4 +10,5 @@
 - Preserve pending automatic errors during flush, quit, and normal shutdown, while still discarding them on opt-out.
 - Select relevant error backtraces, retain native origins, and preserve customer callback errors with thread-scoped feedback-loop protection.
 - Editor plugin, resource configuration, example, headless tests, and addon packaging.
+- Skip automatic initialization during editor play by default, with an explicit opt-in and runtime-environment metadata.
 - Session replay intentionally excluded; see `docs/unity-parity.md` for remaining limitations.

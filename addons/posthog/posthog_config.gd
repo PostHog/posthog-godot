@@ -6,6 +6,7 @@ enum PersonProfiles { ALWAYS, IDENTIFIED_ONLY, NEVER }
 
 @export var api_key: String = ""
 @export var host: String = "https://us.i.posthog.com"
+@export var skip_auto_init_on_editor_play: bool = true
 @export_range(1, 10000) var flush_at: int = 20
 @export_range(1, 3600) var flush_interval_seconds: float = 30.0
 @export_range(1, 100000) var max_queue_size: int = 1000
