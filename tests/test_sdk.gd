@@ -27,6 +27,7 @@ func _run() -> void:
 	await _test_flags()
 	await _test_flag_races()
 	await _test_lifecycle_and_errors()
+	preload("test_error_logger.gd").run(check)
 	await _test_http()
 	_remove_directory(_test_path)
 	print("PostHog tests: %d checks, %d failures" % [checks, failures])
@@ -678,7 +679,7 @@ func _test_lifecycle_and_errors() -> void:
 		frames[0].filename == "res://main.gd" and frames[1].lineno == 12,
 		"stack frames oldest first"
 	)
-	push_error("Expected PostHog automatic error capture test")
+	_emit_automatic_error()
 	await process_frame
 	await process_frame
 	check(
@@ -693,12 +694,16 @@ func _test_lifecycle_and_errors() -> void:
 		"automatic error marked unhandled"
 	)
 	var count: int = node.queued_event_count
-	push_error("Expected debounced PostHog error")
+	_emit_automatic_error()
 	await process_frame
 	check(node.queued_event_count == count, "automatic errors debounced")
 	node.opt_out()
 	check(node._logger == null, "logger removed on opt out")
 	await dispose(node)
+
+
+func _emit_automatic_error() -> void:
+	push_error("Expected PostHog automatic error capture test")
 
 
 func _test_http() -> void:

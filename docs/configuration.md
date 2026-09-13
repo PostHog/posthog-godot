@@ -20,7 +20,7 @@
 | `capture_application_lifecycle_events` | `true` | Installed/updated/opened/backgrounded analytics events. Version history still advances when disabled. |
 | `capture_exceptions` | `true` | Automatically capture Godot errors via Logger. Does not disable explicit `capture_exception()`. |
 | `capture_exceptions_in_editor` | `true` | Allow automatic errors in editor builds (including games launched from the editor). |
-| `exception_debounce_interval_ms` | `1000` | Minimum interval between automatic errors; 0 disables debounce. Pending automatic errors are bounded to 20. |
+| `exception_debounce_interval_ms` | `1000` | Minimum interval between identical automatic errors (type/message/file/line); 0 disables duplicate suppression. Separate fixed limits allow 5 errors per frame, 20 per rolling 10 seconds, and 20 pending errors. Manual captures are unaffected. |
 | `flush_on_quit` | `true` | Best-effort final flush for window-close interception and `PostHog.quit()`. |
 | `flush_on_quit_timeout_seconds` | `3` | Maximum final flush wait. |
 | `opt_out_by_default` | `false` | Initial consent state when no persisted explicit preference exists. Set before setup. |
