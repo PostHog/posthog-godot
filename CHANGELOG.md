@@ -12,4 +12,5 @@
 - Editor plugin, resource configuration, example, headless tests, and addon packaging.
 - Skip automatic initialization during editor play by default, with an explicit opt-in and runtime-environment metadata.
 - Add real desktop/Web release-export tests, a Windows/macOS/Linux CI matrix, and Chromium coverage for persistence, consent, CORS, and release stacktraces.
+- Fix error-tracking frames missing the backend's required custom platform/language tags.
 - Session replay intentionally excluded; see `docs/unity-parity.md` for remaining limitations.

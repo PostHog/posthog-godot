@@ -417,6 +417,9 @@ func capture_exception(
 		var filename := str(frame.get("source", ""))
 		frames.append(
 			{
+				"platform": "custom",
+				"lang": "godot",
+				"resolved": true,
 				"filename": filename,
 				"function": str(frame.get("function", "")),
 				"lineno": int(frame.get("line", 0)),

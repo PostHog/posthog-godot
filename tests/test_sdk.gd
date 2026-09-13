@@ -678,6 +678,7 @@ func _test_lifecycle_and_errors() -> void:
 		"manual handled error"
 	)
 	var frames: Array = event.properties["$exception_list"][0].stacktrace.frames
+	check(frames.all(_is_custom_frame), "manual frames satisfy the backend custom-frame schema")
 	check(
 		frames[0].filename == "res://main.gd" and frames[1].lineno == 12,
 		"stack frames oldest first"
@@ -696,6 +697,13 @@ func _test_lifecycle_and_errors() -> void:
 		not node._queue.events.back().properties["$exception_handled"],
 		"automatic error marked unhandled"
 	)
+	var automatic_frames: Array = (
+		node._queue.events.back().properties["$exception_list"][0].stacktrace.frames
+	)
+	check(
+		not automatic_frames.is_empty() and automatic_frames.all(_is_custom_frame),
+		"automatic frames satisfy the backend custom-frame schema"
+	)
 	var count: int = node.queued_event_count
 	_emit_automatic_error()
 	await process_frame
@@ -703,6 +711,14 @@ func _test_lifecycle_and_errors() -> void:
 	node.opt_out()
 	check(node._logger == null, "logger removed on opt out")
 	await dispose(node)
+
+
+func _is_custom_frame(frame: Dictionary) -> bool:
+	return (
+		frame.get("platform") == "custom"
+		and frame.get("lang") == "godot"
+		and frame.get("resolved") == true
+	)
 
 
 func _test_error_shutdown() -> void:

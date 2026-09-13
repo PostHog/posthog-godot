@@ -197,6 +197,12 @@ def main():
                 frames = events[1]["properties"]["$exception_list"][0]["stacktrace"][
                     "frames"
                 ]
+                assert all(
+                    frame.get("platform") == "custom"
+                    and frame.get("lang") == "godot"
+                    and frame.get("resolved") is True
+                    for frame in frames
+                ), frames
                 script_frames = [
                     frame for frame in frames if frame["filename"] == "res://main.gd"
                 ]

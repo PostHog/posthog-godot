@@ -249,6 +249,9 @@ for (const enabled of [true, false]) {
       },
     })
     const frames = error.properties.$exception_list[0].stacktrace.frames
+    for (const frame of frames) {
+      expect(frame).toMatchObject({ platform: 'custom', lang: 'godot', resolved: true })
+    }
     const scriptFrames = frames.filter(
       (frame) => frame.filename === 'res://main.gd',
     )
