@@ -5,7 +5,7 @@
 
 A native **Godot 4.5+ GDScript addon** for PostHog, based on the [PostHog Unity SDK](https://github.com/PostHog/posthog-unity). No .NET, native libraries, or runtime dependencies required.
 
-**Initial implementation (0.1.0).** Tested headlessly on macOS with Godot 4.5 and 4.7.2 and a local HTTP server. Mobile, web, and production PostHog ingestion have not yet been validated. See [feature parity and limitations](docs/unity-parity.md).
+**Initial implementation (0.1.0).** Unit tests are verified locally with Godot 4.5 and 4.7.2, plus real macOS and Chromium Web release exports against local HTTP servers. CI includes Windows/macOS/Linux release-export checks and browser tests. Mobile exports, other browsers, and production PostHog ingestion remain unvalidated. See [feature parity and limitations](docs/unity-parity.md).
 
 ## Features
 
@@ -170,6 +170,7 @@ Run this repository as a Godot project for an interactive example. It sends noth
 ```sh
 python3 scripts/test.py       # Godot 4.5+; GODOT can specify the executable.
 python3 scripts/package.py   # Produces dist/posthog-godot-0.1.0.zip.
+# See CONTRIBUTING.md for real desktop/Web export tests.
 ```
 
 ## License

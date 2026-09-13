@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="PostHogConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/posthog/posthog_config.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+api_key = "phc_export_test"
+host = "http://127.0.0.1:47836/allowed"
+flush_at = 1000
+flush_interval_seconds = 60.0
+preload_feature_flags = false
+capture_application_lifecycle_events = false
+flush_on_quit = false
+request_timeout_seconds = 2.0
+feature_flag_request_max_retries = 0

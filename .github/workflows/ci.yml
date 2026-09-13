@@ -9,24 +9,27 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Install Godot 4.5
-        run: |
-          curl --fail --location --retry 3 \
-            https://github.com/godotengine/godot/releases/download/4.5-stable/Godot_v4.5-stable_linux.x86_64.zip \
-            --output /tmp/godot.zip
-          echo 'c7316e1fd782ad276a4d985a7673b5976eaaa8d90561a2bea5289210dc53e9ba  /tmp/godot.zip' | sha256sum --check
-          unzip -q /tmp/godot.zip -d /tmp/godot
-          echo 'GODOT=/tmp/godot/Godot_v4.5-stable_linux.x86_64' >> "$GITHUB_ENV"
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .cache/godot
+          key: godot-4.5-export-tests-${{ runner.os }}-v1
+      - name: Install pinned Godot and export templates
+        run: python scripts/install_godot.py --templates
+        timeout-minutes: 10
       - name: Install development tools
-        run: |
-          python3 -m venv /tmp/posthog-tools
-          /tmp/posthog-tools/bin/pip install gdtoolkit==4.5.0 ruff==0.12.11
-          echo '/tmp/posthog-tools/bin' >> "$GITHUB_PATH"
+        run: python -m pip install gdtoolkit==4.5.0 ruff==0.12.11
       - name: Lint and format
         run: |
           gdformat --check addons tests examples
@@ -34,13 +37,58 @@ jobs:
           ruff check scripts
           ruff format --check scripts
       - name: Headless unit and HTTP integration tests
-        run: python3 scripts/test.py
+        run: python scripts/test.py
+      - name: Real desktop release exports and stacktrace tests
+        run: python scripts/test_exports.py
       - name: Example smoke test (no API key)
-        run: "$GODOT --headless --path . --quit-after 3"
+        shell: bash
+        run: '"$GODOT" --headless --path . --quit-after 3'
       - name: Package addon
-        run: python3 scripts/package.py
+        if: runner.os == 'Linux'
+        run: python scripts/package.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: runner.os == 'Linux'
         with:
           name: posthog-godot
-          path: dist/*.zip
+          path: dist/posthog-godot-*.zip
           if-no-files-found: error
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/web/package-lock.json
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .cache/godot
+          key: godot-4.5-export-tests-${{ runner.os }}-v1
+      - name: Install pinned Godot and export templates
+        run: python scripts/install_godot.py --templates
+        timeout-minutes: 10
+      - name: Build Web release exports
+        run: python scripts/test_exports.py --target web
+      - name: Install browser test dependencies
+        working-directory: tests/web
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps --only-shell chromium
+        timeout-minutes: 5
+      - name: Test browser persistence, consent, CORS, and release stacktraces
+        working-directory: tests/web
+        run: npm test
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: browser-export-test-results
+          path: |
+            tests/web/playwright-report/
+            tests/web/test-results/
+          if-no-files-found: warn
