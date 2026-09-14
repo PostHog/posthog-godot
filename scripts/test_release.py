@@ -19,14 +19,16 @@ ROOT = Path(__file__).resolve().parents[1]
 class ReleaseTests(unittest.TestCase):
     def test_tag_must_match_package_version(self):
         with patch("release.package.get_version", return_value="0.1.0"):
-            self.assertEqual(release.validate_tag("v0.1.0"), "0.1.0")
-            for tag in ("0.1.0", "v0.1.1", "main", "v0.1.0/extra", "v0.1.0\n"):
+            self.assertEqual(release.validate_tag("0.1.0"), "0.1.0")
+            for tag in ("v0.1.0", "0.1.1", "main", "0.1.0/extra", "0.1.0\n"):
                 with self.subTest(tag=tag), self.assertRaises(ValueError):
                     release.validate_tag(tag)
 
     def test_prerelease_version(self):
         with patch("release.package.get_version", return_value="0.2.0-rc.1"):
-            self.assertEqual(release.validate_tag("v0.2.0-rc.1"), "0.2.0-rc.1")
+            self.assertEqual(release.validate_tag("0.2.0-rc.1"), "0.2.0-rc.1")
+            with self.assertRaises(ValueError):
+                release.validate_tag("v0.2.0-rc.1")
 
     def test_missing_archive(self):
         version = release.package.get_version()
@@ -35,7 +37,7 @@ class ReleaseTests(unittest.TestCase):
         ) as temporary:
             directory = Path(temporary)
             with self.assertRaises(FileNotFoundError):
-                release.prepare_release("v" + version, directory)
+                release.prepare_release(version, directory)
             self.assertFalse((directory / "asset-library.json").exists())
             self.assertFalse((directory / "SHA256SUMS").exists())
 
@@ -60,7 +62,7 @@ class ReleaseTests(unittest.TestCase):
             directory = Path(temporary)
             archive = directory / f"posthog-godot-{version}.zip"
             shutil.copyfile(ROOT / "dist" / archive.name, archive)
-            release.prepare_release("v" + version, directory)
+            release.prepare_release(version, directory)
             metadata = json.loads((directory / "asset-library.json").read_text())
             self.assertEqual(metadata["repository_host"], "Custom")
             self.assertEqual(metadata["source_commit"], revision)
@@ -69,7 +71,7 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual(metadata["license"], "MIT")
             self.assertEqual(
                 metadata["download_commit"],
-                f"https://github.com/PostHog/posthog-godot/releases/download/v{version}/{archive.name}",
+                f"https://github.com/PostHog/posthog-godot/releases/download/{version}/{archive.name}",
             )
             self.assertEqual(
                 metadata["icon_url"],
@@ -78,7 +80,7 @@ class ReleaseTests(unittest.TestCase):
             self.assertIn("Experimental", metadata["description"])
             with patch("release.subprocess.check_output", return_value="0" * 40):
                 with self.assertRaises(AssertionError):
-                    release.prepare_release("v" + version, directory)
+                    release.prepare_release(version, directory)
             self.assertEqual(
                 json.loads((directory / "asset-library.json").read_text()), metadata
             )

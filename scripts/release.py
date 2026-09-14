@@ -16,8 +16,8 @@ REPOSITORY = "https://github.com/PostHog/posthog-godot"
 
 def validate_tag(tag):
     version = package.get_version()
-    if tag != f"v{version}":
-        raise ValueError(f"Tag {tag!r} must match the package version: v{version}")
+    if tag != version:
+        raise ValueError(f"Tag {tag!r} must match the package version: {version}")
     return version
 
 
@@ -59,7 +59,7 @@ def prepare_release(tag, directory):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("tag", help="Version tag, e.g. v0.1.0")
+    parser.add_argument("tag", help="Version tag without a v prefix, e.g. 0.1.0")
     parser.add_argument(
         "--check", action="store_true", help="Only validate the tag/version"
     )

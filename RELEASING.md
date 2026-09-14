@@ -2,13 +2,15 @@
 
 The SDK is experimental. The release workflow publishes **prereleases**, never marks them as the latest stable release, and does not submit anything to the Asset Library.
 
+Tags exactly match the SDK version, **without a `v` prefix**: use `0.1.0` or `0.2.0-rc.1`, not `v0.1.0`. Release titles and download URLs use the same unprefixed tag.
+
 ## How it works
 
 | Trigger | Result |
 | --- | --- |
 | Push a branch or open a pull request | Run CI; no release is published. |
 | Manually run the Release workflow | Validate, test, and prepare downloadable artifacts; publication is always skipped. |
-| Push a matching `v*` tag to the canonical repository | Validate, test, prepare artifacts, then publish an experimental prerelease. |
+| Push a matching unprefixed version tag to the canonical repository | Validate, test, prepare artifacts, then publish an experimental prerelease. |
 | Submit or update an Asset Library listing | Separate manual action by a registered maintainer, followed by moderation. |
 
 The job sequence is `validate` → `verify` → `prepare` → `publish`. `verify` calls the existing [CI workflow](.github/workflows/ci.yml), so release checks cannot silently diverge from normal CI. The [Release workflow](.github/workflows/release.yml) publishes the ZIP produced by that verified run.
@@ -24,13 +26,13 @@ These instructions are for SDK maintainers, not application developers. Run comm
 2. Update `CHANGELOG.md` and review the README's experimental warning and platform limitations. Do not claim physical-device or downstream ingestion coverage based only on HTTP acknowledgements.
 3. Run the checks in [CONTRIBUTING](CONTRIBUTING.md), including `python3 scripts/test_release.py`.
 4. Commit the changes and push to the canonical `PostHog/posthog-godot` repository. Wait for CI to pass.
-5. Before the first publication, configure a repository tag ruleset preventing updates/deletion of `v*` tags and enable GitHub release immutability. Do not move or reuse a version tag.
+5. Before the first publication, configure a repository tag ruleset preventing updates/deletion of `[0-9]*.[0-9]*.[0-9]*` tags and enable GitHub release immutability. Do not move or reuse a version tag.
 
 To preview checksums and the submission worksheet locally, without creating a tag or publishing:
 
 ```sh
 python3 scripts/package.py
-python3 scripts/release.py v0.1.0
+python3 scripts/release.py 0.1.0
 ```
 
 Use the version declared by the checkout. Generate final assets from a clean, committed checkout; local previews can reference commits or release URLs that are not public yet.
@@ -38,7 +40,7 @@ Use the version declared by the checkout. Generate final assets from a clean, co
 For an end-to-end **non-publishing** rehearsal after the workflow is on the default branch:
 
 ```sh
-gh workflow run release.yml --ref main -f tag=v0.1.0
+gh workflow run release.yml --ref main -f tag=0.1.0
 ```
 
 Manual runs validate the requested version, run the complete desktop/Web CI suite, and produce a `release-assets` workflow artifact. They never create a tag or GitHub release. The tag need not exist for a dry run.
@@ -71,7 +73,7 @@ Run `sha256sum --check SHA256SUMS` inside the downloaded directory (macOS: `shas
 Only do this after confirming the version and experimental release status with the release owner:
 
 ```sh
-tag=v0.1.0
+tag=0.1.0
 git status --short
 git tag -s "$tag" -m "PostHog Godot $tag (Experimental)"
 git push origin "$tag"
@@ -79,7 +81,7 @@ git push origin "$tag"
 
 Start from the clean, pushed commit that passed CI. Use the configured signing mechanism; stop if signing authorization fails rather than disabling it.
 
-A `v*` tag push triggers `.github/workflows/release.yml`. The workflow:
+A tag push matching `[0-9]*.[0-9]*.[0-9]*` triggers `.github/workflows/release.yml`. The filter accepts numeric version tags, including prerelease suffixes; validation then requires an exact match with the SDK version. The workflow:
 
 1. Requires the tag to match all SDK version declarations.
 2. Runs the reusable CI workflow: formatting/linting, unit/HTTP/editor/packaging tests, Windows/macOS/Linux release exports, and Chromium Web tests.
