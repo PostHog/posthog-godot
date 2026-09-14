@@ -63,7 +63,13 @@ def main():
         for path in sorted(ADDON.rglob("*"))
         if path.is_file() and path.suffix in {".gd", ".uid", ".cfg"}
     }
-    for name in ["README.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md"]:
+    for name in [
+        "README.md",
+        "LICENSE",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "RELEASING.md",
+    ]:
         files[ROOT / name] = PurePosixPath("addons/posthog") / name
     for path in sorted((ROOT / "docs").glob("*.md")):
         files[path] = PurePosixPath("addons/posthog/docs") / path.name

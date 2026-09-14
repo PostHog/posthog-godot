@@ -54,7 +54,7 @@ See [examples/mobile_smoke](examples/mobile_smoke/README.md) for a persistent po
 
 Packaging requires a Git checkout. Bundled documentation keeps local links to files inside the addon ZIP; links to repository-only examples are rewritten to the checkout's exact commit on GitHub.
 
-Maintainers: see [tagged releases and Asset Library distribution](docs/releasing.md) for the non-publishing dry run, signed tags, and manual submission checklist.
+Maintainers: see [tagged releases and Asset Library distribution](RELEASING.md) for the non-publishing dry run, signed tags, and manual submission checklist.
 
 ## Layout
 

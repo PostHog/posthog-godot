@@ -23,6 +23,7 @@ def validate(archive, revision):
         assert {
             "addons/posthog/LICENSE",
             "addons/posthog/README.md",
+            "addons/posthog/RELEASING.md",
             "addons/posthog/plugin.cfg",
         } <= names
         assert not any("/.godot/" in name or name.endswith(".tres") for name in names)
@@ -43,6 +44,7 @@ def validate(archive, revision):
             assert sample_url in text, f"Sample link is not commit-pinned: {name}"
         assert "[LICENSE](LICENSE)" in package.read("addons/posthog/README.md").decode()
         assert not any("/examples/" in name for name in names)
+        assert "addons/posthog/docs/releasing.md" not in names
     print("Packaged documentation links resolve locally or to commit-pinned examples")
 
 

@@ -168,7 +168,7 @@ The addon processes networking even while the scene tree is paused. OS backgroun
 - [All configuration options](docs/configuration.md)
 - [Unity feature parity and platform limitations](docs/unity-parity.md)
 - [Contributing, tests, and packaging](CONTRIBUTING.md)
-- [Tagged releases and Asset Library distribution](docs/releasing.md)
+- [Tagged releases and Asset Library distribution](RELEASING.md)
 
 Run this repository as a Godot project for an interactive example. It sends nothing unless `POSTHOG_API_KEY` is set in the launching environment (`POSTHOG_HOST` is optional).
 

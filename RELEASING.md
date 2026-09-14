@@ -2,6 +2,19 @@
 
 The SDK is experimental. The release workflow publishes **prereleases**, never marks them as the latest stable release, and does not submit anything to the Asset Library.
 
+## How it works
+
+| Trigger | Result |
+| --- | --- |
+| Push a branch or open a pull request | Run CI; no release is published. |
+| Manually run the Release workflow | Validate, test, and prepare downloadable artifacts; publication is always skipped. |
+| Push a matching `v*` tag to the canonical repository | Validate, test, prepare artifacts, then publish an experimental prerelease. |
+| Submit or update an Asset Library listing | Separate manual action by a registered maintainer, followed by moderation. |
+
+The job sequence is `validate` → `verify` → `prepare` → `publish`. `verify` calls the existing [CI workflow](.github/workflows/ci.yml), so release checks cannot silently diverge from normal CI. The [Release workflow](.github/workflows/release.yml) publishes the ZIP produced by that verified run.
+
+These instructions are for SDK maintainers, not application developers. Run commands from the SDK repository root. You need Git with signing configured, Python, and an authenticated GitHub CLI account with repository push/workflow access. Check authentication with `gh auth status`; see [CONTRIBUTING](CONTRIBUTING.md) for local validation tools.
+
 ## Prepare and validate
 
 1. Update these version declarations together:
@@ -9,7 +22,7 @@ The SDK is experimental. The release workflow publishes **prereleases**, never m
    - `addons/posthog/internal/utils.gd`: `VERSION`
    - `project.godot`: `config/version`
 2. Update `CHANGELOG.md` and review the README's experimental warning and platform limitations. Do not claim physical-device or downstream ingestion coverage based only on HTTP acknowledgements.
-3. Run the checks in [CONTRIBUTING](../CONTRIBUTING.md), including `python3 scripts/test_release.py`.
+3. Run the checks in [CONTRIBUTING](CONTRIBUTING.md), including `python3 scripts/test_release.py`.
 4. Commit the changes and push to the canonical `PostHog/posthog-godot` repository. Wait for CI to pass.
 5. Before the first publication, configure a repository tag ruleset preventing updates/deletion of `v*` tags and enable GitHub release immutability. Do not move or reuse a version tag.
 
@@ -29,6 +42,29 @@ gh workflow run release.yml --ref main -f tag=v0.1.0
 ```
 
 Manual runs validate the requested version, run the complete desktop/Web CI suite, and produce a `release-assets` workflow artifact. They never create a tag or GitHub release. The tag need not exist for a dry run.
+
+### Monitor and inspect a rehearsal
+
+Find the run ID in the URL printed by the dispatch command, or list runs:
+
+```sh
+gh run list --workflow release.yml --event workflow_dispatch --branch main
+```
+
+Replace `RUN_ID` below with that ID:
+
+```sh
+gh run watch RUN_ID --exit-status
+gh run download RUN_ID --name release-assets --dir dist/release-rehearsal/RUN_ID
+```
+
+A successful rehearsal has green `validate`, `verify`, and `prepare` jobs, and a **skipped** `publish` job. The downloaded artifact contains:
+
+- `posthog-godot-<version>.zip`: installable addon, documentation, and license.
+- `asset-library.json`: a submission worksheet, including source commit and versioned download/icon URLs.
+- `SHA256SUMS`: checksums for the ZIP and worksheet.
+
+Run `sha256sum --check SHA256SUMS` inside the downloaded directory (macOS: `shasum -a 256 --check SHA256SUMS`). A rehearsal does not make its future release URL available; do not submit its worksheet to the Asset Library yet.
 
 ## Publish a tagged prerelease
 
@@ -91,4 +127,8 @@ Before submitting:
 
 For updates, edit the existing listing with the new worksheet. Each update is reviewed again; do not create a duplicate listing for each SDK version. Test installation through the editor's AssetLib tab after approval.
 
-References: [submission requirements](https://docs.godotengine.org/en/stable/community/asset_library/submitting_to_assetlib.html), [Custom provider implementation](https://github.com/godotengine/godot-asset-library/blob/master/src/Helpers/Utils.php), [icon source and regeneration](assets/README.md).
+## Future stable releases
+
+Stable publication is deliberately not supported by the current workflow. Before the first stable release, make a separately reviewed change to the experimental warnings and publication policy, including the `--prerelease` and `--latest=false` flags. Do not bypass the policy by manually relabeling an experimental release.
+
+References: [submission requirements](https://docs.godotengine.org/en/stable/community/asset_library/submitting_to_assetlib.html), [Custom provider implementation](https://github.com/godotengine/godot-asset-library/blob/master/src/Helpers/Utils.php), [icon source and regeneration](docs/assets/README.md).
