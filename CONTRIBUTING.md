@@ -52,6 +52,8 @@ The Web exports are written to `dist/export-tests/web`; desktop artifacts go und
 
 See [examples/mobile_smoke](examples/mobile_smoke/README.md) for a persistent portrait test app, token-safe preparation, an automated Android runner, and the iOS ARM64 simulator build workaround. These tests use a real project only when you explicitly provide `POSTHOG_API_KEY`; they are not part of CI. Generated apps, configuration, signing keys, and reports stay under ignored `dist/`.
 
+Packaging requires a Git checkout. Bundled documentation keeps local links to files inside the addon ZIP; links to repository-only examples are rewritten to the checkout's exact commit on GitHub.
+
 ## Layout
 
 - `addons/posthog/posthog.gd`: public autoload API, lifecycle, identity, enrichment

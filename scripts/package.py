@@ -2,12 +2,44 @@
 """Build an installable addon archive without shipping project/editor state."""
 
 from configparser import ConfigParser
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+import posixpath
 import re
+import subprocess
+from urllib.parse import quote, unquote, urlsplit
 from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 ADDON = ROOT / "addons" / "posthog"
+
+
+def package_markdown(source, destination, files, revision):
+    def rewrite(match):
+        url = urlsplit(match[2])
+        if url.scheme or url.netloc or not url.path:
+            return match[0]
+        target = (source.parent / unquote(url.path)).resolve()
+        relative = target.relative_to(ROOT).as_posix()
+        if not target.exists():
+            raise ValueError(f"Broken documentation link: {source} -> {match[2]}")
+        if target in files:
+            address = quote(
+                posixpath.relpath(
+                    files[target].as_posix(), destination.parent.as_posix()
+                )
+            )
+        else:
+            kind = "tree" if target.is_dir() else "blob"
+            address = f"https://github.com/PostHog/posthog-godot/{kind}/{revision}/{quote(relative)}"
+        if url.query:
+            address += "?" + url.query
+        if url.fragment:
+            address += "#" + url.fragment
+        return match[1] + address + match[3]
+
+    return re.sub(
+        r"(!?\[[^\]]*\]\()([^\s)]+)(\))", rewrite, source.read_text(encoding="utf-8")
+    )
 
 
 def main():
@@ -21,14 +53,26 @@ def main():
     assert f'config/version="{version}"' in (ROOT / "project.godot").read_text()
     destination = ROOT / "dist" / f"posthog-godot-{version}.zip"
     destination.parent.mkdir(exist_ok=True)
+    files = {
+        path: PurePosixPath(path.relative_to(ROOT).as_posix())
+        for path in sorted(ADDON.rglob("*"))
+        if path.is_file() and path.suffix in {".gd", ".uid", ".cfg"}
+    }
+    for name in ["README.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md"]:
+        files[ROOT / name] = PurePosixPath("addons/posthog") / name
+    for path in sorted((ROOT / "docs").glob("*.md")):
+        files[path] = PurePosixPath("addons/posthog/docs") / path.name
+    revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
     with ZipFile(destination, "w", ZIP_DEFLATED) as archive:
-        for path in sorted(ADDON.rglob("*")):
-            if path.is_file() and path.suffix in {".gd", ".uid", ".cfg"}:
-                archive.write(path, path.relative_to(ROOT))
-        for name in ["README.md", "LICENSE", "CHANGELOG.md", "CONTRIBUTING.md"]:
-            archive.write(ROOT / name, f"addons/posthog/{name}")
-        for path in sorted((ROOT / "docs").glob("*.md")):
-            archive.write(path, f"addons/posthog/docs/{path.name}")
+        for source, target in files.items():
+            if source.suffix == ".md":
+                archive.writestr(
+                    target.as_posix(), package_markdown(source, target, files, revision)
+                )
+            else:
+                archive.write(source, target.as_posix())
     print(destination)
 
 
