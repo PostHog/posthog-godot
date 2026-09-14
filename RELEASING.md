@@ -84,7 +84,7 @@ Start from the clean, pushed commit that passed CI. Use the configured signing m
 A tag push matching `[0-9]*.[0-9]*.[0-9]*` triggers `.github/workflows/release.yml`. The filter accepts numeric version tags, including prerelease suffixes; validation then requires an exact match with the SDK version. The workflow:
 
 1. Requires the tag to match all SDK version declarations.
-2. Runs the reusable CI workflow: formatting/linting, unit/HTTP/editor/packaging tests, Windows/macOS/Linux release exports, and Chromium Web tests.
+2. Runs the reusable CI workflow: formatting/linting, unit/HTTP/editor/packaging tests, Windows/macOS/Linux release exports, and Chromium Web tests. macOS uses Godot 4.5.1 to avoid the upstream 4.5 Apple export-plugin shutdown race; Linux, Windows, and Web retain the 4.5 baseline.
 3. Downloads the tested addon ZIP instead of rebuilding it during publication.
 4. Validates its documentation links against the source commit and generates `SHA256SUMS` plus `asset-library.json`.
 5. Verifies the checksums and that the remote tag still points to that source commit.
@@ -92,7 +92,7 @@ A tag push matching `[0-9]*.[0-9]*.[0-9]*` triggers `.github/workflows/release.y
 
 Only the final publication job has `contents: write`; other jobs have read-only repository access. Publication is limited to tag pushes in the canonical repository. No PostHog API key or personal access token is needed.
 
-Download the published files and verify `sha256sum --check SHA256SUMS` (macOS: `shasum -a 256 --check SHA256SUMS`). Install the ZIP into a fresh Godot 4.5 project, enable the plugin, create/select a config resource, and reopen the editor. Check the installed documentation links as well.
+Download the published files and verify `sha256sum --check SHA256SUMS` (macOS: `shasum -a 256 --check SHA256SUMS`). Install the ZIP into a fresh Godot 4.5+ project (use 4.5.1 or newer on macOS to avoid the upstream editor crash), enable the plugin, create/select a config resource, and reopen the editor. Check the installed documentation links as well.
 
 If publication fails, inspect the run and any draft release before retrying. Do not replace a published release, overwrite its assets, or move the tag to work around a failed run. Ship a new version for fixes to a published release.
 

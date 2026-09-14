@@ -22,6 +22,7 @@ env:
 
 jobs:
   validate:
+    if: github.event_name != 'push' || !github.event.deleted
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -67,7 +68,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    if: github.event_name == 'push' && github.repository == 'PostHog/posthog-godot'
+    if: github.event_name == 'push' && !github.event.deleted && github.repository == 'PostHog/posthog-godot'
     needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 5

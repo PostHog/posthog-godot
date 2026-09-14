@@ -12,7 +12,7 @@ import tempfile
 import threading
 from zipfile import ZipFile
 
-from install_godot import EDITORS
+from install_godot import RELEASES, VERSION, validate_editor_version
 from test import Handler, requests
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -136,15 +136,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", choices=["desktop", "web"], default="desktop")
     args = parser.parse_args()
+    expected = os.environ.get("GODOT_VERSION", VERSION)
+    if expected not in RELEASES:
+        raise SystemExit(f"Unsupported pinned Godot version: {expected}")
+    editors, _ = RELEASES[expected]
     godot = os.environ.get("GODOT") or str(
-        ROOT / ".cache/godot/editor" / EDITORS[sys.platform][1]
+        ROOT / ".cache/godot/editor" / editors[sys.platform][1]
     )
     templates = Path(
         os.environ.get("GODOT_TEMPLATES", ROOT / ".cache/godot/templates")
     ).resolve()
     version = subprocess.check_output([godot, "--version"], text=True)
-    if not version.startswith("4.5.stable"):
-        raise SystemExit("Export tests require the pinned Godot 4.5 editor/templates")
+    validate_editor_version(version, expected)
     destination = ROOT / "dist/export-tests" / args.target
     if args.target == "web":
         for enabled in [True, False]:
