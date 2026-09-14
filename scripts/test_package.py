@@ -11,18 +11,7 @@ from zipfile import ZipFile
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run():
-    result = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/package.py")],
-        capture_output=True,
-        text=True,
-        check=True,
-        cwd=ROOT,
-    )
-    archive = Path(result.stdout.strip())
-    revision = subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-    ).strip()
+def validate(archive, revision):
     sample_url = (
         "https://github.com/PostHog/posthog-godot/blob/"
         + revision
@@ -30,6 +19,13 @@ def run():
     )
     with ZipFile(archive) as package:
         names = set(package.namelist())
+        assert all(name.startswith("addons/posthog/") for name in names)
+        assert {
+            "addons/posthog/LICENSE",
+            "addons/posthog/README.md",
+            "addons/posthog/plugin.cfg",
+        } <= names
+        assert not any("/.godot/" in name or name.endswith(".tres") for name in names)
         for name in sorted(names):
             if not name.endswith(".md"):
                 continue
@@ -48,6 +44,21 @@ def run():
         assert "[LICENSE](LICENSE)" in package.read("addons/posthog/README.md").decode()
         assert not any("/examples/" in name for name in names)
     print("Packaged documentation links resolve locally or to commit-pinned examples")
+
+
+def run():
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/package.py")],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=ROOT,
+    )
+    archive = Path(result.stdout.strip())
+    revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
+    validate(archive, revision)
 
 
 if __name__ == "__main__":

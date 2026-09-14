@@ -1,0 +1,9 @@
+Experimental native Godot 4.5+ SDK for PostHog analytics, feature flags, experiments, and error tracking. The GDScript runtime requires no .NET, native libraries, or runtime dependencies.
+
+Features include event capture, identification, groups, super properties, sessions, feature flag payloads, automatic GDScript error capture, persistent event queues, retries, and consent controls.
+
+Install addons/posthog and enable PostHog in Project Settings > Plugins. Create a PostHogConfig resource and select it under Project Settings > PostHog > Config. Resource-based auto-initialization is disabled during editor play by default; explicit setup is available for development.
+
+This is an initial implementation. Desktop and browser release exports are covered by CI. Android emulator and iOS simulator cloud smoke tests have passed locally; physical devices and broader downstream ingestion verification remain outstanding.
+
+Documentation and limitations: https://github.com/PostHog/posthog-godot

@@ -2,8 +2,10 @@ name: CI
 
 on:
   push:
+    branches: ['**']
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -36,8 +38,10 @@ jobs:
           gdlint addons tests examples
           ruff check scripts
           ruff format --check scripts
-      - name: Headless unit and HTTP integration tests
+      - name: Headless unit, HTTP, editor, and packaging tests
         run: python scripts/test.py
+      - name: Release tooling tests (no publishing)
+        run: python scripts/test_release.py
       - name: Real desktop release exports and stacktrace tests
         run: python scripts/test_exports.py
       - name: Example smoke test (no API key)

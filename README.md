@@ -26,6 +26,8 @@ A reusable [mobile smoke-test sample](examples/mobile_smoke/README.md) covers id
 
 ## Install
 
+For tagged builds, use the `posthog-godot-<version>.zip` addon asset from [GitHub Releases](https://github.com/PostHog/posthog-godot/releases), not the automatically generated source archives.
+
 1. Copy `addons/posthog` into your project's `addons` directory (or extract an addon ZIP at your project root).
 2. Enable **PostHog** in **Project → Project Settings → Plugins**. This adds the `PostHog` autoload.
 3. Initialize it once, from your startup scene:
@@ -166,6 +168,7 @@ The addon processes networking even while the scene tree is paused. OS backgroun
 - [All configuration options](docs/configuration.md)
 - [Unity feature parity and platform limitations](docs/unity-parity.md)
 - [Contributing, tests, and packaging](CONTRIBUTING.md)
+- [Tagged releases and Asset Library distribution](docs/releasing.md)
 
 Run this repository as a Godot project for an interactive example. It sends nothing unless `POSTHOG_API_KEY` is set in the launching environment (`POSTHOG_HOST` is optional).
 

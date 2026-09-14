@@ -42,7 +42,7 @@ def package_markdown(source, destination, files, revision):
     )
 
 
-def main():
+def get_version():
     plugin = ConfigParser()
     plugin.read(ADDON / "plugin.cfg")
     version = plugin["plugin"]["version"].strip('"')
@@ -51,6 +51,11 @@ def main():
     )
     assert f'const VERSION = "{version}"' in (ADDON / "internal/utils.gd").read_text()
     assert f'config/version="{version}"' in (ROOT / "project.godot").read_text()
+    return version
+
+
+def main():
+    version = get_version()
     destination = ROOT / "dist" / f"posthog-godot-{version}.zip"
     destination.parent.mkdir(exist_ok=True)
     files = {

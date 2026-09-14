@@ -16,4 +16,5 @@
 - Add a reusable portrait mobile smoke sample, key-safe local configuration, Android automation, and iOS ARM64 simulator instructions.
 - Restore the config resource file picker on every editor startup without changing autoload registration.
 - Fix documentation links in addon ZIPs by pinning repository-only targets to the source commit.
+- Prepare CI-gated experimental releases, checksums, and Asset Library submission metadata and icon.
 - Session replay intentionally excluded; see `docs/unity-parity.md` for remaining limitations.
