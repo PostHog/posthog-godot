@@ -9,6 +9,8 @@ import subprocess
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import test_editor
+
 ROOT = Path(__file__).resolve().parents[1]
 requests = []
 
@@ -132,6 +134,7 @@ def main():
     assert event["distinct_id"] == flags[0]["distinct_id"]
     assert flags[0]["$anon_distinct_id"] == event["distinct_id"]
     print("HTTP wire assertions passed")
+    test_editor.run(godot)
     return 0
 
 

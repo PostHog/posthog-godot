@@ -2,8 +2,7 @@
 extends EditorPlugin
 
 
-func _enable_plugin() -> void:
-	add_autoload_singleton("PostHog", "res://addons/posthog/posthog.gd")
+func _enter_tree() -> void:
 	if not ProjectSettings.has_setting("posthog/config"):
 		ProjectSettings.set_setting("posthog/config", "")
 	ProjectSettings.add_property_info(
@@ -15,6 +14,10 @@ func _enable_plugin() -> void:
 		}
 	)
 	ProjectSettings.set_initial_value("posthog/config", "")
+
+
+func _enable_plugin() -> void:
+	add_autoload_singleton("PostHog", "res://addons/posthog/posthog.gd")
 	ProjectSettings.save()
 
 

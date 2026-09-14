@@ -14,4 +14,5 @@
 - Add real desktop/Web release-export tests, a Windows/macOS/Linux CI matrix, and Chromium coverage for persistence, consent, CORS, and release stacktraces.
 - Fix error-tracking frames missing the backend's required custom platform/language tags.
 - Add a reusable portrait mobile smoke sample, key-safe local configuration, Android automation, and iOS ARM64 simulator instructions.
+- Restore the config resource file picker on every editor startup without changing autoload registration.
 - Session replay intentionally excluded; see `docs/unity-parity.md` for remaining limitations.
