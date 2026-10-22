@@ -31,28 +31,48 @@ static func timestamp() -> String:
 	return "%s.%03dZ" % [Time.get_datetime_string_from_unix_time(int(now)), int(now * 1000) % 1000]
 
 
-static func is_json(value: Variant, depth: int = 0) -> bool:
+static func is_json(value: Variant, depth: int = 0, allow_non_finite: bool = false) -> bool:
 	if depth > 32:
 		return false
 	match typeof(value):
 		TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_STRING, TYPE_STRING_NAME:
 			return true
 		TYPE_FLOAT:
-			return is_finite(value)
+			return allow_non_finite or is_finite(value)
 		TYPE_ARRAY:
 			for item in value:
-				if not is_json(item, depth + 1):
+				if not is_json(item, depth + 1, allow_non_finite):
 					return false
 			return true
 		TYPE_DICTIONARY:
 			for key in value:
 				if (
 					(not key is String and not key is StringName)
-					or not is_json(value[key], depth + 1)
+					or not is_json(value[key], depth + 1, allow_non_finite)
 				):
 					return false
 			return true
 	return false
+
+
+# Validate with is_json(value, 0, true) first to avoid expanding cyclic containers.
+static func normalize_non_finite(value: Variant, depth: int = 0) -> Variant:
+	if depth > 32:
+		return value
+	match typeof(value):
+		TYPE_FLOAT:
+			return value if is_finite(value) else null
+		TYPE_ARRAY:
+			var result: Array = []
+			for item in value:
+				result.append(normalize_non_finite(item, depth + 1))
+			return result
+		TYPE_DICTIONARY:
+			var result: Dictionary = {}
+			for key in value:
+				result[key] = normalize_non_finite(value[key], depth + 1)
+			return result
+	return value
 
 
 static func valid_event(event: Variant) -> bool:

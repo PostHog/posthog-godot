@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Preserve events containing non-finite numeric properties by serializing NaN and positive/negative infinity as null, including values added by before_send.
 - Initial native Godot 4.5+ PostHog addon based on the Unity SDK.
 - Analytics, identity, groups, sessions, lifecycle events, consent, and persistent delivery.
 - Feature flags, JSON payloads, experiment exposures, cached evaluation context, and request cancellation.

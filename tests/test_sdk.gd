@@ -19,6 +19,7 @@ func _run() -> void:
 	await _test_capture_and_identity()
 	await _test_profiles_and_consent()
 	await _test_before_send()
+	await _test_invalid_capture_properties()
 	await _test_reinitialize()
 	_test_sessions()
 	await _test_persistence()
@@ -278,6 +279,28 @@ func _test_before_send() -> void:
 		return value
 	node.capture("consent_changed")
 	check(node.queued_event_count == 0, "consent rechecked after before_send")
+	await dispose(node)
+
+
+func _test_invalid_capture_properties() -> void:
+	var node := client()
+	var cyclic: Array = []
+	cyclic.append(cyclic)
+	cyclic.append(cyclic)
+	var deep: Dictionary = {"leaf": 1}
+	for index in 34:
+		deep = {"nested": deep}
+	for invalid in [{"bad": Vector2.ONE, "number": NAN}, {1: "bad key"}, {"cycle": cyclic}, deep]:
+		node.capture("invalid", invalid)
+		node._config.before_send = func(event: Dictionary):
+			event.properties = invalid
+			return event
+		node.capture("invalid-hook")
+		node._config.before_send = Callable()
+	check(node.queued_event_count == 0, "unsupported, cyclic and deep properties still rejected")
+	cyclic.clear()
+	node.capture("valid-neighbor", {"finite": 1.5})
+	check(node.queued_event_count == 1, "invalid properties do not block valid neighboring event")
 	await dispose(node)
 
 
@@ -875,6 +898,62 @@ func _test_http() -> void:
 	settings.host = host
 	var node := client(settings)
 	node.capture("http-integration", {"unicode": "Hedgehog 🦔", "nested": {"enabled": true}})
+	for hook in [false, true]:
+		for index in 3:
+			var value: float = [NAN, INF, -INF][index]
+			var typed_items: Array[float] = [value, 1.5]
+			var properties := {
+				"number": value,
+				"nested": {"number": value, "sibling": 42},
+				"items": [1, value, {"number": value, "sibling": true}, [value], 2],
+				"typed_items": typed_items,
+				"finite": 1.5,
+				"zero": 0,
+				"enabled": false,
+				"existing_null": null,
+				"literals": ["NaN", "Infinity", "-Infinity"]
+			}
+			if hook:
+				node._config.before_send = func(event: Dictionary):
+					event.properties.merge(properties)
+					return event
+			node.capture(
+				"non-finite-%s-%d" % ["hook" if hook else "capture", index],
+				{} if hook else properties
+			)
+			var unchanged: bool = (
+				is_nan(properties.number) if is_nan(value) else properties.number == value
+			)
+			check(unchanged, "capture leaves caller's direct non-finite number unchanged")
+			check(
+				(
+					is_nan(properties.nested.number)
+					if is_nan(value)
+					else properties.nested.number == value
+				),
+				"capture leaves caller's nested non-finite number unchanged"
+			)
+			check(
+				is_nan(properties.items[1]) if is_nan(value) else properties.items[1] == value,
+				"capture leaves caller's array non-finite number unchanged"
+			)
+			check(
+				(
+					is_nan(properties.items[2].number)
+					if is_nan(value)
+					else properties.items[2].number == value
+				),
+				"capture leaves caller's object inside array unchanged"
+			)
+			check(
+				is_nan(typed_items[0]) if is_nan(value) else typed_items[0] == value,
+				"capture leaves caller's typed array unchanged"
+			)
+	node._config.before_send = Callable()
+	node.capture("finite-neighbor", {"finite": 2.5})
+	check(
+		node.queued_event_count == 8, "non-finite captures and hooks admitted beside valid events"
+	)
 	check(await node.flush() and node.queued_event_count == 0, "real HTTP batch delivery")
 	check(await node.reload_feature_flags(), "real HTTP flags request")
 	check(

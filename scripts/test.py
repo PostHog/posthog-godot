@@ -16,12 +16,19 @@ ROOT = Path(__file__).resolve().parents[1]
 requests = []
 
 
+def reject_non_finite(value):
+    raise ValueError(f"Invalid JSON numeric token: {value}")
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_args):
         pass
 
     def do_POST(self):
-        body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        body = json.loads(
+            self.rfile.read(int(self.headers["Content-Length"])),
+            parse_constant=reject_non_finite,
+        )
         requests.append((self.path, body, self.headers.get("Content-Type")))
         if self.path == "/flags/?v=2":
             response = {
@@ -134,6 +141,34 @@ def main():
     assert event["properties"]["unicode"] == "Hedgehog 🦔"
     assert event["distinct_id"] == flags[0]["distinct_id"]
     assert flags[0]["$anon_distinct_id"] == event["distinct_id"]
+    events = batches[0]["batch"]
+    assert [event["event"] for event in events] == [
+        "http-integration",
+        *[
+            f"non-finite-{source}-{index}"
+            for source in ("capture", "hook")
+            for index in range(3)
+        ],
+        "finite-neighbor",
+    ]
+    for event in events[1:-1]:
+        properties = event["properties"]
+        assert properties["number"] is None
+        assert properties["nested"] == {"number": None, "sibling": 42}
+        assert properties["items"] == [
+            1,
+            None,
+            {"number": None, "sibling": True},
+            [None],
+            2,
+        ]
+        assert properties["typed_items"] == [None, 1.5]
+        assert properties["finite"] == 1.5
+        assert properties["zero"] == 0
+        assert properties["enabled"] is False
+        assert "existing_null" in properties and properties["existing_null"] is None
+        assert properties["literals"] == ["NaN", "Infinity", "-Infinity"]
+    assert events[-1]["properties"]["finite"] == 2.5
     print("HTTP wire assertions passed")
     test_editor.run(godot)
     test_package.run()
