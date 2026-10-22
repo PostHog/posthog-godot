@@ -63,12 +63,17 @@ static func normalize_non_finite(value: Variant, depth: int = 0) -> Variant:
 		TYPE_FLOAT:
 			return value if is_finite(value) else null
 		TYPE_ARRAY:
-			var result: Array = []
-			for item in value:
-				result.append(normalize_non_finite(item, depth + 1))
+			var result: Array = value.duplicate()
+			if value.get_typed_builtin() == TYPE_FLOAT and not is_json(value):
+				result = []
+				result.assign(value)
+			for index in value.size():
+				result[index] = normalize_non_finite(value[index], depth + 1)
 			return result
 		TYPE_DICTIONARY:
-			var result: Dictionary = {}
+			var result: Dictionary = value.duplicate()
+			if value.get_typed_value_builtin() == TYPE_FLOAT and not is_json(value):
+				result = {}
 			for key in value:
 				result[key] = normalize_non_finite(value[key], depth + 1)
 			return result

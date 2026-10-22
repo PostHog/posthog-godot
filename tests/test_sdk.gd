@@ -19,6 +19,7 @@ func _run() -> void:
 	await _test_capture_and_identity()
 	await _test_profiles_and_consent()
 	await _test_before_send()
+	await preload("test_typed_properties.gd").run(self)
 	await _test_invalid_capture_properties()
 	await _test_reinitialize()
 	_test_sessions()
