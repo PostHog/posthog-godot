@@ -1,6 +1,6 @@
 extends RefCounted
 
-const VERSION = "0.1.0"
+const VERSION = "0.1.1"
 const LIBRARY = "posthog-godot"
 static var _last_ms: int = 0
 static var _sequence: int = 0
