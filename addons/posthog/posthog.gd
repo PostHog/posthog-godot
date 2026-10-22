@@ -147,11 +147,11 @@ func setup(config: PostHogConfig) -> bool:
 func capture(event_name: String, properties: Dictionary = {}) -> void:
 	if not _can_capture() or event_name.strip_edges().is_empty() or _in_before_send:
 		return
-	if not Utils.is_json(properties):
-		Utils.warn("Event properties must contain only finite JSON values")
+	if not Utils.is_json(properties, 0, true):
+		Utils.warn("Event properties must contain only JSON values")
 		return
 	var props := _super_properties.duplicate(true)
-	props.merge(properties.duplicate(true), true)
+	props.merge(Utils.normalize_non_finite(properties), true)
 	props.merge(_default_properties(), true)
 	props["$is_identified"] = _identity.identified
 	props["$process_person_profile"] = (
@@ -178,6 +178,13 @@ func capture(event_name: String, properties: Dictionary = {}) -> void:
 		_in_before_send = true
 		event = _config.before_send.call(event)
 		_in_before_send = false
+		if (
+			event is Dictionary
+			and event.get("properties") is Dictionary
+			and Utils.is_json(event.properties, 0, true)
+		):
+			event = event.duplicate()
+			event.properties = Utils.normalize_non_finite(event.properties)
 	if event == null or not _can_capture():
 		return
 	if not Utils.valid_event(event):
