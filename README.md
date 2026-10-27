@@ -5,7 +5,7 @@
 
 A native **Godot 4.5+ GDScript addon** for PostHog, based on the [PostHog Unity SDK](https://github.com/PostHog/posthog-unity). No .NET, native libraries, or runtime dependencies required.
 
-**Initial implementation (0.1.0).** Unit tests are verified locally with Godot 4.5 and 4.7.2, plus real macOS and Chromium Web release exports against local HTTP servers. CI includes Windows/macOS/Linux release-export checks and browser tests. Android emulator and iOS simulator release smoke tests also pass against US Cloud (iOS requires a custom ARM64 Godot simulator library). Physical devices, other browsers, and downstream ingestion/error grouping still need validation. See [feature parity and limitations](docs/unity-parity.md).
+**Initial implementation (0.1.0).** Unit tests are verified locally with Godot 4.5 and 4.7.2, plus real macOS and Chromium Web release exports against local HTTP servers. CI includes Windows/macOS/Linux release-export checks and browser tests. Android emulator and iOS simulator release smoke tests also pass against US Cloud (iOS requires a custom ARM64 Godot simulator library). Physical devices, other browsers, and downstream ingestion/error grouping still need validation.
 
 ## Features
 
@@ -155,7 +155,7 @@ PostHog.quit()
 
 Events are persisted at capture time and sent to `/batch/` after 20 events or 30 seconds by default, in batches of 50. Up to 1,000 events are retained; overflow evicts the oldest. Delivery is at-least-once with stable UUIDs, not guaranteed exactly-once.
 
-Network/server failures, HTTP 408, and HTTP 429 retain events with bounded exponential backoff; numeric `Retry-After` is honored. HTTP 413 splits batches and drops an individually oversized event. Other 4xx errors discard the rejected batch. `events_dropped(count, reason)` reports overflow/permanent HTTP drops. `flush()` returns false on failures, opt-out, or active backoff, and coalesces concurrent flushes. Redirects are not followed: configure the ingestion host directly.
+Network/server failures, HTTP 408, and HTTP 429 retain events with bounded exponential backoff; numeric `Retry-After` is honored. HTTP 413 splits batches and drops an individually oversized event. Other 4xx errors discard the rejected batch. `events_dropped(count, reason)` reports overflow/permanent HTTP drops. `flush()` returns false on failures, opt-out, or active backoff, and coalesces concurrent flushes. Redirects are not followed: configure the ingestion host directly. Requests set `User-Agent: posthog-godot/<sdk-version>`. Web exports are subject to browser restrictions and may send the browser User-Agent instead.
 
 `flush()` first transfers pending automatic errors through the normal capture pipeline, including `before_send`. Normal shutdown stops the logger and queues its remaining errors before teardown, persisting them when persistence is enabled. `PostHog.quit()` does this before its final delivery attempt. Opt-out discards pending errors instead.
 
@@ -166,7 +166,6 @@ The addon processes networking even while the scene tree is paused. OS backgroun
 ## Configuration, platform notes, and development
 
 - [All configuration options](docs/configuration.md)
-- [Unity feature parity and platform limitations](docs/unity-parity.md)
 - [Contributing, tests, and packaging](CONTRIBUTING.md)
 - [Tagged releases and Asset Library distribution](RELEASING.md)
 

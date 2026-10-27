@@ -26,4 +26,4 @@
 - Fix documentation links in addon ZIPs by pinning repository-only targets to the source commit.
 - Prepare CI-gated experimental releases, checksums, and Asset Library submission metadata and icon.
 - Use matching Godot 4.5.1 editor/templates for macOS CI to avoid an upstream export-plugin shutdown crash, retaining the 4.5 baseline on other platforms.
-- Session replay intentionally excluded; see `docs/unity-parity.md` for remaining limitations.
+- Session replay intentionally excluded.
