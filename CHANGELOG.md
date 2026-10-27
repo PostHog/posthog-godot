@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Set the SDK User-Agent header on all PostHog requests, subject to browser restrictions in Web exports.
+
 ## 0.1.1 - 2026-10-22
 
 - Preserve events containing non-finite numeric properties by serializing NaN and positive/negative infinity as null, including values added by before_send.
