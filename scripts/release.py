@@ -44,9 +44,11 @@ def prepare_release(tag, directory):
             + "/docs/assets/icon.png"
         ),
         "license": "MIT",
-        "description": (ROOT / "docs/asset-library-description.txt")
-        .read_text(encoding="utf-8")
-        .strip(),
+        "description": (
+            "Experimental native Godot 4.5+ SDK for PostHog analytics, "
+            "feature flags, experiments, and error tracking. "
+            f"Documentation: {REPOSITORY}"
+        ),
     }
     worksheet = directory / "asset-library.json"
     worksheet.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")

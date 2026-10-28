@@ -29,7 +29,7 @@ class Handler(BaseHTTPRequestHandler):
             self.rfile.read(int(self.headers["Content-Length"])),
             parse_constant=reject_non_finite,
         )
-        requests.append((self.path, body, self.headers.get("Content-Type")))
+        requests.append((self.path, body, dict(self.headers)))
         if self.path == "/flags/?v=2":
             response = {
                 "flags": {
@@ -134,9 +134,15 @@ def main():
     quit_event = batches[1]["batch"][0]
     assert quit_event["event"] == "$exception"
     assert quit_event["properties"]["$exception_message"] == "quit-error"
-    assert all(content_type == "application/json" for _, _, content_type in requests)
+    assert all(
+        headers.get("Content-Type") == "application/json" for _, _, headers in requests
+    )
     assert batches[0]["api_key"] == "phc_test"
     event = batches[0]["batch"][0]
+    expected_user_agent = f"posthog-godot/{event['properties']['$lib_version']}"
+    assert all(
+        headers.get("User-Agent") == expected_user_agent for _, _, headers in requests
+    ), requests
     assert event["event"] == "http-integration"
     assert event["properties"]["unicode"] == "Hedgehog 🦔"
     assert event["distinct_id"] == flags[0]["distinct_id"]

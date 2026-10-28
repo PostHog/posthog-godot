@@ -1,5 +1,7 @@
 extends Node
 
+const Utils = preload("utils.gd")
+
 var config: PostHogConfig
 var _requests: Array[HTTPRequest] = []
 
@@ -19,7 +21,13 @@ func post(path: String, body: Dictionary, callback: Callable) -> HTTPRequest:
 			request.queue_free()
 			callback.call(result, status, headers, data.get_string_from_utf8())
 	)
-	var headers := PackedStringArray(["Content-Type: application/json", "Accept: application/json"])
+	var headers := PackedStringArray(
+		[
+			"Content-Type: application/json",
+			"Accept: application/json",
+			"User-Agent: " + Utils.LIBRARY + "/" + Utils.VERSION,
+		]
+	)
 	var error := request.request(
 		config.host.trim_suffix("/") + path, headers, HTTPClient.METHOD_POST, JSON.stringify(body)
 	)
