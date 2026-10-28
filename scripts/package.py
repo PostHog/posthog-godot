@@ -2,6 +2,7 @@
 """Build an installable addon archive without shipping project/editor state."""
 
 from configparser import ConfigParser
+import json
 from pathlib import Path, PurePosixPath
 import posixpath
 import re
@@ -51,6 +52,7 @@ def get_version():
     )
     assert f'const VERSION = "{version}"' in (ADDON / "internal/utils.gd").read_text()
     assert f'config/version="{version}"' in (ROOT / "project.godot").read_text()
+    assert json.loads((ROOT / "package.json").read_text())["version"] == version
     return version
 
 

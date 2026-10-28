@@ -11,12 +11,85 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import bump_version
 import release
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReleaseTests(unittest.TestCase):
+    def version_fixture(self, directory, version):
+        for name in (
+            "package.json",
+            "addons/posthog/plugin.cfg",
+            "addons/posthog/internal/utils.gd",
+            "project.godot",
+        ):
+            path = directory / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / name, path)
+        metadata = json.loads((directory / "package.json").read_text())
+        metadata["version"] = version
+        (directory / "package.json").write_text(json.dumps(metadata))
+
+    def test_bump_updates_all_declarations_and_preserves_other_content(self):
+        old_version = release.package.get_version()
+        for version in ("0.1.3", "0.2.0", "1.0.0", "0.2.0-rc.1"):
+            with self.subTest(version=version), tempfile.TemporaryDirectory() as temp:
+                directory = Path(temp)
+                self.version_fixture(directory, version)
+                paths = [
+                    directory / name
+                    for name in (
+                        "addons/posthog/plugin.cfg",
+                        "addons/posthog/internal/utils.gd",
+                        "project.godot",
+                    )
+                ]
+                originals = {path: path.read_text() for path in paths}
+                self.assertEqual(bump_version.bump_version(directory), version)
+                for path in paths:
+                    self.assertEqual(
+                        path.read_text(), originals[path].replace(old_version, version)
+                    )
+                with (
+                    patch("package.ROOT", directory),
+                    patch("package.ADDON", directory / "addons/posthog"),
+                ):
+                    self.assertEqual(release.package.get_version(), version)
+
+    def test_invalid_release_version_does_not_modify_declarations(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            self.version_fixture(directory, "v0.2.0")
+            plugin = directory / "addons/posthog/plugin.cfg"
+            original = plugin.read_bytes()
+            with self.assertRaises(ValueError):
+                bump_version.bump_version(directory)
+            self.assertEqual(plugin.read_bytes(), original)
+
+    def test_missing_declaration_does_not_partially_bump(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            self.version_fixture(directory, "0.2.0")
+            (directory / "project.godot").write_text("[application]\n")
+            plugin = directory / "addons/posthog/plugin.cfg"
+            original = plugin.read_bytes()
+            with self.assertRaisesRegex(ValueError, "project.godot"):
+                bump_version.bump_version(directory)
+            self.assertEqual(plugin.read_bytes(), original)
+
+    def test_package_rejects_mismatched_release_metadata(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            self.version_fixture(directory, "99.0.0")
+            with (
+                patch("package.ROOT", directory),
+                patch("package.ADDON", directory / "addons/posthog"),
+                self.assertRaises(AssertionError),
+            ):
+                release.package.get_version()
+
     def test_tag_must_match_package_version(self):
         with patch("release.package.get_version", return_value="0.1.0"):
             self.assertEqual(release.validate_tag("0.1.0"), "0.1.0")
