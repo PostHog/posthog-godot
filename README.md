@@ -165,6 +165,8 @@ The addon processes networking even while the scene tree is paused. OS backgroun
 
 ## Configuration, platform notes, and development
 
+**Android:** enable the Internet permission (`permissions/internet=true`) in your Android export preset so analytics and feature flag requests can reach PostHog.
+
 - [All configuration options](docs/configuration.md)
 - [Contributing, tests, and packaging](CONTRIBUTING.md)
 - [Tagged releases and Asset Library distribution](RELEASING.md)
