@@ -91,6 +91,6 @@ Internal classes are not a supported public API. Test fixtures access them inten
 python3 scripts/package.py
 ```
 
-This creates `dist/posthog-godot-0.1.1.zip`, containing only `addons/posthog/**` plus license/readme/configuration documents under the addon directory. It excludes the sample project's autoload settings, tests, editor cache, and credentials. Extracting it at another project's root must not replace that project's `project.godot`.
+This creates `dist/posthog-godot-0.1.2.zip`, containing only `addons/posthog/**` plus license/readme/configuration documents under the addon directory. It excludes the sample project's autoload settings, tests, editor cache, and credentials. Extracting it at another project's root must not replace that project's `project.godot`.
 
 Version changes must update `Utils.VERSION` in `internal/utils.gd`, `plugin.cfg`, the example project's `project.godot`, and `CHANGELOG.md`. Packaging checks that all three version declarations agree. CI uploads the ZIP as a build artifact; it does not publish a release or Godot Asset Library listing automatically.

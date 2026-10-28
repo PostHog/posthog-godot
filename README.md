@@ -175,7 +175,7 @@ Run this repository as a Godot project for an interactive example. It sends noth
 
 ```sh
 python3 scripts/test.py       # Godot 4.5+; GODOT can specify the executable.
-python3 scripts/package.py   # Produces dist/posthog-godot-0.1.1.zip.
+python3 scripts/package.py   # Produces dist/posthog-godot-0.1.2.zip.
 # See CONTRIBUTING.md for real desktop/Web export tests.
 ```
 

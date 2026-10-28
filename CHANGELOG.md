@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.2 - 2026-10-28
+
 - Set the SDK User-Agent header on all PostHog requests, subject to browser restrictions in Web exports.
 
 ## 0.1.1 - 2026-10-22
