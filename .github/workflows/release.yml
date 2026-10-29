@@ -112,6 +112,15 @@ jobs:
     timeout-minutes: 10
     environment: Release
     steps:
+      - name: Notify Slack - Approved
+        if: needs.notify-approval-needed.outputs.slack_ts != ''
+        uses: posthog/.github/.github/actions/slack-thread-reply@cb0979b67dcd585828b61ac45927eef4da8f6287 # main
+        with:
+          slack_bot_token: ${{ secrets.SLACK_CLIENT_LIBRARIES_BOT_TOKEN }}
+          slack_channel_id: ${{ vars.SLACK_APPROVALS_CLIENT_LIBRARIES_CHANNEL_ID }}
+          thread_ts: ${{ needs.notify-approval-needed.outputs.slack_ts }}
+          message: "✅ Release approved! Publishing release..."
+          emoji_reaction: "white_check_mark"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.prepare-candidate.outputs.source-sha }}
@@ -204,9 +213,24 @@ jobs:
     needs: [prepare-candidate, verify, notify-approval-needed, publish]
     if: always() && (failure() || cancelled() || needs.publish.result == 'success')
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     steps:
+      - name: Check whether release was rejected
+        id: check-failure
+        if: needs.notify-approval-needed.outputs.slack_ts != '' && (needs.publish.result == 'failure' || needs.publish.result == 'cancelled')
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          rejected=$(gh api "repos/$GH_REPO/actions/runs/$RUN_ID/approvals" --jq 'any(.[]; .state == "rejected")')
+          echo "was_rejected=$rejected" >> "$GITHUB_OUTPUT"
       - name: Send failure event to PostHog
-        if: failure() || needs.prepare-candidate.result == 'failure' || needs.verify.result == 'failure' || needs.publish.result == 'failure'
+        if: steps.check-failure.outputs.was_rejected != 'true' && (failure() || needs.prepare-candidate.result == 'failure' || needs.verify.result == 'failure' || needs.publish.result == 'failure')
         continue-on-error: true
         uses: PostHog/posthog-github-action@9a6a19d360820ab4d95ecc4a5a7564062c895f84 # v1.3.0
         with:
@@ -221,11 +245,31 @@ jobs:
               "actionUrl": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
               "alertText": "posthog-godot release failed"
             }
-      - name: Reply to approval thread
-        if: always() && needs.notify-approval-needed.outputs.slack_ts != ''
+      - name: Notify Slack - Released
+        if: always() && needs.publish.result == 'success' && needs.notify-approval-needed.outputs.slack_ts != ''
         uses: posthog/.github/.github/actions/slack-thread-reply@cb0979b67dcd585828b61ac45927eef4da8f6287 # main
         with:
           slack_bot_token: ${{ secrets.SLACK_CLIENT_LIBRARIES_BOT_TOKEN }}
           slack_channel_id: ${{ vars.SLACK_APPROVALS_CLIENT_LIBRARIES_CHANNEL_ID }}
           thread_ts: ${{ needs.notify-approval-needed.outputs.slack_ts }}
-          message: "posthog-godot@${{ needs.prepare-candidate.outputs.version }} release: ${{ needs.publish.result }}. <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+          message: "🚀 posthog-godot@${{ needs.prepare-candidate.outputs.version }} released successfully! <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+          emoji_reaction: "rocket"
+      - name: Notify Slack - Failed
+        if: always() && needs.publish.result != 'success' && steps.check-failure.outputs.was_rejected != 'true' && needs.notify-approval-needed.outputs.slack_ts != ''
+        uses: posthog/.github/.github/actions/slack-thread-reply@cb0979b67dcd585828b61ac45927eef4da8f6287 # main
+        with:
+          slack_bot_token: ${{ secrets.SLACK_CLIENT_LIBRARIES_BOT_TOKEN }}
+          slack_channel_id: ${{ vars.SLACK_APPROVALS_CLIENT_LIBRARIES_CHANNEL_ID }}
+          thread_ts: ${{ needs.notify-approval-needed.outputs.slack_ts }}
+          message: "❌ Release posthog-godot@${{ needs.prepare-candidate.outputs.version }} failed or was cancelled! <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>"
+          emoji_reaction: "x"
+      - name: Notify Slack - Rejected
+        if: always() && steps.check-failure.outputs.was_rejected == 'true' && needs.notify-approval-needed.outputs.slack_ts != ''
+        continue-on-error: true
+        uses: posthog/.github/.github/actions/slack-thread-reply@cb0979b67dcd585828b61ac45927eef4da8f6287 # main
+        with:
+          slack_bot_token: ${{ secrets.SLACK_CLIENT_LIBRARIES_BOT_TOKEN }}
+          slack_channel_id: ${{ vars.SLACK_APPROVALS_CLIENT_LIBRARIES_CHANNEL_ID }}
+          thread_ts: ${{ needs.notify-approval-needed.outputs.slack_ts }}
+          message: "🚫 Release posthog-godot@${{ needs.prepare-candidate.outputs.version }} was rejected. <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+          emoji_reaction: "no_entry_sign"
