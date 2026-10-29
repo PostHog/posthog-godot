@@ -91,6 +91,6 @@ Internal classes are not a supported public API. Test fixtures access them inten
 python3 scripts/package.py
 ```
 
-This creates `dist/posthog-godot-0.1.2.zip`, containing only `addons/posthog/**` plus license/readme/configuration documents under the addon directory. It excludes the sample project's autoload settings, tests, editor cache, and credentials. Extracting it at another project's root must not replace that project's `project.godot`.
+This creates `dist/posthog-godot-<version>.zip`, containing only `addons/posthog/**` plus license/readme/configuration documents under the addon directory. It excludes the sample project's autoload settings, tests, editor cache, and credentials. Extracting it at another project's root must not replace that project's `project.godot`.
 
 For releasable changes, include a `.changeset/*.md` intent for `posthog-godot` in the PR instead of manually editing versions or `CHANGELOG.md`. After merge, the Release workflow prepares local updates to `package.json`, `Utils.VERSION`, `plugin.cfg`, `project.godot`, and the changelog, then verifies that candidate in CI. After a single `Release` approval, it commits the verified updates and publishes an experimental prerelease. Packaging checks that all four version declarations agree. Godot Asset Library submission remains manual. See [RELEASING](RELEASING.md).
