@@ -69,7 +69,7 @@ See [examples/mobile_smoke](examples/mobile_smoke/README.md) for a persistent po
 
 Packaging requires a Git checkout. Bundled documentation keeps local links to files inside the addon ZIP; links to repository-only examples are rewritten to the checkout's exact commit on GitHub.
 
-Maintainers: see [tagged releases and Asset Library distribution](RELEASING.md) for the non-publishing dry run, signed tags, and manual submission checklist.
+Maintainers: see [automated releases and Asset Library distribution](RELEASING.md) for change intents, release approval, repository setup, and the manual submission checklist.
 
 ## Layout
 
@@ -93,4 +93,4 @@ python3 scripts/package.py
 
 This creates `dist/posthog-godot-0.1.2.zip`, containing only `addons/posthog/**` plus license/readme/configuration documents under the addon directory. It excludes the sample project's autoload settings, tests, editor cache, and credentials. Extracting it at another project's root must not replace that project's `project.godot`.
 
-Version changes must update `Utils.VERSION` in `internal/utils.gd`, `plugin.cfg`, the example project's `project.godot`, and `CHANGELOG.md`. Packaging checks that all three version declarations agree. CI uploads the ZIP as a build artifact; it does not publish a release or Godot Asset Library listing automatically.
+For releasable changes, include a `.changeset/*.md` intent for `posthog-godot` in the PR instead of manually editing versions or `CHANGELOG.md`. After merge, the Release workflow prepares local updates to `package.json`, `Utils.VERSION`, `plugin.cfg`, `project.godot`, and the changelog, then verifies that candidate in CI. After a single `Release` approval, it commits the verified updates and publishes an experimental prerelease. Packaging checks that all four version declarations agree. Godot Asset Library submission remains manual. See [RELEASING](RELEASING.md).

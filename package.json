@@ -1,0 +1,7 @@
+{
+  "name": "posthog-godot",
+  "version": "0.1.2",
+  "private": true,
+  "description": "Release metadata for the PostHog Godot SDK",
+  "packageManager": "pnpm@11.13.1"
+}
