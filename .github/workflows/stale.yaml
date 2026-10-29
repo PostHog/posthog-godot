@@ -4,6 +4,7 @@ on:
         - cron: '30 9 * * 1-5'
 
 permissions:
+    actions: write
     contents: read
     issues: write
     pull-requests: write
