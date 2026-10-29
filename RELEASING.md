@@ -31,13 +31,14 @@ Later changes to `main` do not change the approved assets or tag target. Slack r
 
 Configure these before enabling releases:
 
-- Create a **`Release` environment** with required reviewers and deployment restricted to `main`. Without required reviewers, GitHub does not enforce a human approval gate.
-- Install a dedicated releaser GitHub App on `PostHog/posthog-godot` with **Contents: write**. Add its client ID as `GH_APP_POSTHOG_GODOT_RELEASER_APP_ID` and private key as `GH_APP_POSTHOG_GODOT_RELEASER_PRIVATE_KEY`. These must be repository/organization secrets: versioning happens before the environment gate. App tokens are short-lived; no personal access token is needed.
+- Create a **`Versioning` environment** with a selected deployment branch policy allowing only the `main` branch, not tags. No required reviewers are needed. This lets versioning run automatically while GitHub blocks branch workflows from accessing its secrets. Do not rely on the workflow's `if:` condition alone: a branch author can edit it.
+- Create a **`Release` environment** with required reviewers and the same main-only branch policy. Without required reviewers, GitHub does not enforce a human approval gate.
+- Install a dedicated releaser GitHub App on `PostHog/posthog-godot` with **Contents: write**. Store its client ID as `GH_APP_POSTHOG_GODOT_RELEASER_APP_ID` and private key as `GH_APP_POSTHOG_GODOT_RELEASER_PRIVATE_KEY` as **environment secrets in both `Versioning` and `Release`**. Do not make these credentials available as repository or organization secrets. Remove any such copies: adding environment secrets does not prevent a branch workflow from reading a repository/organization copy. App tokens are short-lived; no personal access token is needed.
 - Allow that App to bypass the `main` rules requiring a pull request and status checks for its automated version commit. Keep the signed-commit requirement: the GitHub commit API signs the App's commits. The current repository rules otherwise reject the version commit.
 - Provide `SLACK_CLIENT_LIBRARIES_BOT_TOKEN` and `POSTHOG_PROJECT_API_KEY` as repository/organization secrets, and `SLACK_APPROVALS_CLIENT_LIBRARIES_CHANNEL_ID` and `GROUP_CLIENT_LIBRARIES_SLACK_GROUP_ID` as repository/organization variables, matching the PHP SDK pipeline.
 - Configure a tag ruleset preventing updates/deletion of `[0-9]*.[0-9]*.[0-9]*` tags and enable GitHub release immutability. Allow the releaser App to create tags, but never move or reuse one.
 
-The workflow's default token has read-only repository access. Only versioning and publication obtain a scoped App token.
+The workflow's default token has read-only repository access. Only versioning and publication obtain a scoped App token, after GitHub enforces their environment's deployment branch policy. The `Release` environment also requires approval before publication. Configure both environments and their secrets before running the workflow; the YAML does not create their protection rules.
 
 ## Ship a change
 
