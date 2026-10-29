@@ -9,36 +9,35 @@ Tags exactly match the SDK version, **without a `v` prefix**: use `0.1.3`, not `
 | Trigger | Result |
 | --- | --- |
 | Push a branch or open a pull request | Run CI; no release is published. |
-| Merge a releasable `.changeset/*.md` intent into `main` | Automatically bump versions and changelog, verify the release commit, prepare assets, and request approval. |
+| Merge a releasable `.changeset/*.md` intent into `main` | Prepare and verify an uncommitted version/changelog patch, then request approval to commit and publish it. |
 | Manually run Release on `main` | Process any pending change intents through the same publishing pipeline; **not a dry run**. |
 | Push a version tag | No release workflow; tags are created by the pipeline. |
 | Submit or update an Asset Library listing | Separate manual action by a registered maintainer, followed by moderation. |
 
 The [Release workflow](.github/workflows/release.yml) serializes releases. Queued runs check out the latest `main` and consume only still-pending change intents; runs with none skip publication. pnpm's ledger prevents already-consumed intents from being released again.
 
-The job sequence is `version` → `verify` → `prepare` → `notify-approval-needed` → `publish`:
+The job sequence is `prepare-candidate` → `verify` → `notify-approval-needed` → `publish`, following the PHP SDK's prepare, verify, approve, then commit/publish flow:
 
-1. pnpm 11.13.1 applies pending change intents, updates `package.json` and `CHANGELOG.md`, and records them in `.changeset/ledger.yaml`. `scripts/bump_version.py` synchronizes the three Godot version declarations.
-2. A GitHub App creates a GitHub-signed version commit on `main`. The commit API requires the expected parent SHA, so a concurrent change fails safely rather than being overwritten. **The version commit is made before CI and approval; only publication is approval-gated.**
-3. The reusable [CI workflow](.github/workflows/ci.yml) checks out that exact version commit for formatting/linting, unit/HTTP/editor/packaging tests, Windows/macOS/Linux exports, and Chromium Web tests. macOS uses Godot 4.5.1; other platforms retain the 4.5 baseline.
-4. The tested addon ZIP is downloaded without rebuilding. The workflow validates its documentation links against the version commit, then generates `SHA256SUMS` and `asset-library.json`.
-5. Slack receives an approval request. A maintainer reviews the version commit and checks, then approves the `Release` environment deployment in GitHub.
-6. Publication verifies the checksums, version, and source SHA, creates the unprefixed tag at the verified commit, and publishes the experimental prerelease. An existing tag is accepted only if it resolves to the same commit. Release creation does not overwrite an existing release.
+1. In a read-only job, pnpm 11.13.1 applies pending change intents locally, updates `package.json` and `CHANGELOG.md`, and records consumed intents in `.changeset/ledger.yaml`. `scripts/bump_version.py` synchronizes the three Godot declarations. The job uploads a patch and records its SHA-256 checksum, source commit, and resulting Git tree SHA. **No version commit or remote change is made.**
+2. The reusable [CI workflow](.github/workflows/ci.yml) checks out the source commit and applies the exact patch in every desktop and Web job. `scripts/release_candidate.py` verifies the patch checksum, resulting tree, and versions. CI runs formatting/linting, unit/HTTP/editor/packaging tests, Windows/macOS/Linux exports, and Chromium Web tests. macOS uses Godot 4.5.1; other platforms retain the 4.5 baseline.
+3. Slack receives an approval request. Review the candidate patch, workflow summary, and CI results, then approve the **single `Release` deployment** in GitHub.
+4. Only after approval does `publish` obtain the environment-protected App key. It reapplies the verified patch and creates a GitHub-signed version commit on `main`. The expected-parent check rejects concurrent changes to `main`. A retry can reuse an already-created signed commit only when its parent, tree, and release message match this candidate exactly.
+5. The same approved job checks out the signed commit and requires its Git tree to match the tested candidate. It then builds and validates the final addon ZIP and generates `SHA256SUMS` and `asset-library.json`. Packaging happens after the commit so repository documentation links, the icon URL, and source metadata contain the **final commit SHA**, not the candidate's parent. No source changes are made after verification.
+6. The job verifies checksums, version, and source SHA, creates the unprefixed tag at that commit, and publishes the experimental prerelease. An existing tag is accepted only if it resolves to the same commit. Release creation does not overwrite an existing release.
 
-Later changes to `main` do not change the approved assets or tag target. Slack receives the publication result; workflow failures also send a PostHog event.
+No other job has the App credentials, and there is no second environment or approval. Slack receives the publication result; workflow failures also send a PostHog event.
 
 ## One-time repository setup
 
 Configure these before enabling releases:
 
-- Create a **`Versioning` environment** with a selected deployment branch policy allowing only the `main` branch, not tags. No required reviewers are needed. This lets versioning run automatically while GitHub blocks branch workflows from accessing its secrets. Do not rely on the workflow's `if:` condition alone: a branch author can edit it.
-- Create a **`Release` environment** with required reviewers and the same main-only branch policy. Without required reviewers, GitHub does not enforce a human approval gate.
-- Install a dedicated releaser GitHub App on `PostHog/posthog-godot` with **Contents: write**. Store its client ID as `GH_APP_POSTHOG_GODOT_RELEASER_APP_ID` and private key as `GH_APP_POSTHOG_GODOT_RELEASER_PRIVATE_KEY` as **environment secrets in both `Versioning` and `Release`**. Do not make these credentials available as repository or organization secrets. Remove any such copies: adding environment secrets does not prevent a branch workflow from reading a repository/organization copy. App tokens are short-lived; no personal access token is needed.
+- Create a **`Release` environment** with required reviewers and a selected deployment branch policy allowing only the `main` branch, not tags. Both controls matter: reviewers enforce approval, and the branch policy prevents modified branch workflows from accessing the key. Do not rely on the workflow's editable `if:` condition alone.
+- Install a dedicated releaser GitHub App on `PostHog/posthog-godot` with **Contents: write**. Store its client ID as `GH_APP_POSTHOG_GODOT_RELEASER_APP_ID` and private key as `GH_APP_POSTHOG_GODOT_RELEASER_PRIVATE_KEY` as **environment secrets only in `Release`**. Do not make these credentials available as repository or organization secrets. Remove any such copies: adding environment secrets does not prevent a branch workflow from reading a repository/organization copy. App tokens are short-lived; no personal access token is needed.
 - Allow that App to bypass the `main` rules requiring a pull request and status checks for its automated version commit. Keep the signed-commit requirement: the GitHub commit API signs the App's commits. The current repository rules otherwise reject the version commit.
 - Provide `SLACK_CLIENT_LIBRARIES_BOT_TOKEN` and `POSTHOG_PROJECT_API_KEY` as repository/organization secrets, and `SLACK_APPROVALS_CLIENT_LIBRARIES_CHANNEL_ID` and `GROUP_CLIENT_LIBRARIES_SLACK_GROUP_ID` as repository/organization variables, matching the PHP SDK pipeline.
 - Configure a tag ruleset preventing updates/deletion of `[0-9]*.[0-9]*.[0-9]*` tags and enable GitHub release immutability. Allow the releaser App to create tags, but never move or reuse one.
 
-The workflow's default token has read-only repository access. Only versioning and publication obtain a scoped App token, after GitHub enforces their environment's deployment branch policy. The `Release` environment also requires approval before publication. Configure both environments and their secrets before running the workflow; the YAML does not create their protection rules.
+The workflow's default token has read-only repository access. Preparation and verification cannot commit or publish. Only the approved `publish` job obtains a scoped App token. Configure the `Release` environment, its protection rules, and its secrets before running the workflow; the YAML does not create those rules.
 
 ## Ship a change
 
@@ -54,7 +53,7 @@ Describe the user-visible change.
 
 Use `patch`, `minor`, or `major`; pnpm combines pending intents and applies the highest required bump. With the pinned pnpm installed, `pnpm change posthog-godot --bump patch --summary "Describe the change"` can generate the file. pnpm removes consumed intent files and records their entries in the ledger.
 
-Run the checks in [CONTRIBUTING](CONTRIBUTING.md), including `python3 scripts/test_release.py`, then merge the PR. Follow the Release run and Slack approval thread. Before approving, review the version commit, changelog, verified ZIP, and experimental/platform limitations. Do not claim physical-device or downstream ingestion coverage based only on HTTP acknowledgements.
+Run the checks in [CONTRIBUTING](CONTRIBUTING.md), including `python3 -m unittest discover -s scripts -p 'test_release*.py'`, then merge the PR. Follow the Release run and Slack approval thread. Before approving, review the candidate patch, proposed version/changelog, CI results, and experimental/platform limitations. The candidate CI ZIP is a preview; final assets are packaged from the matching signed commit after approval. Do not claim physical-device or downstream ingestion coverage based only on HTTP acknowledgements.
 
 To process pending intents without a new push:
 
@@ -80,13 +79,15 @@ gh run watch RUN_ID --exit-status
 gh run download RUN_ID --name release-assets --dir dist/release-review/RUN_ID
 ```
 
-The artifact contains `posthog-godot-<version>.zip`, `asset-library.json`, and `SHA256SUMS`. Check them with `sha256sum --check SHA256SUMS` inside the downloaded directory (macOS: `shasum -a 256 --check SHA256SUMS`). Its future release download URL is unavailable until publication.
+Before approval, download `release-candidate-SOURCE_SHA` to inspect `release.patch`; the workflow summary gives its checksum and resulting tree SHA. CI's `posthog-godot` artifact is a candidate ZIP, whose documentation still points at the source commit. Do not distribute it as the final release.
 
-If `main` moves during the version commit, the commit API rejects it without consuming intents on the remote. Dispatch a fresh Release run on `main` to retry.
+After approval, `release-assets` contains `posthog-godot-<version>.zip`, `asset-library.json`, and `SHA256SUMS`. Check them with `sha256sum --check SHA256SUMS` inside the downloaded directory (macOS: `shasum -a 256 --check SHA256SUMS`). Its release download URL is unavailable until publication.
 
-If CI, asset preparation, notification, or publication fails **after the version commit**, fix the underlying infrastructure issue and **re-run failed jobs in the original run**, preserving the recorded version SHA and assets. A new dispatch sees consumed intents and will not republish that version. For a code fix, merge a new change intent and release a new version instead. If an approval is rejected, the version commit remains on `main` but is not published; do not roll back the ledger or reuse that version.
+A failed candidate check or rejected approval leaves `main`, versions, and remote intents unchanged. If `main` moves before committing the approved patch, the workflow fails safely. Dispatch a fresh run on `main` to prepare and verify a new candidate before approving again.
 
-Inspect any existing tag/release before retrying publication. Never replace a published release, overwrite its assets, move a tag, or disable signing to work around a failure. Expired/missing artifacts require a new release version rather than rebuilding unverified assets during publication.
+If publication fails **after the version commit**, fix the underlying infrastructure issue and **re-run failed jobs in the original run**, preserving the verified patch and metadata. The job recognizes and reuses its already-created signed commit if it is still the tip of `main` and its parent, tree, and message match. It does not create another version commit. A fresh dispatch sees consumed intents and will not republish that version. If `main` has advanced again or a code fix is needed, release a new version rather than overwriting history.
+
+Inspect any existing tag/release before retrying publication. Never replace a published release, overwrite its assets, move a tag, or disable signing to work around a failure. Candidate patches are retained for five days. If an artifact expires before any commit, dispatch a fresh candidate; if the version commit already exists, ship a new version rather than synthesizing an unverified patch.
 
 After publication, download and verify the release files. Install the ZIP into a fresh Godot 4.5+ project (4.5.1+ on macOS), enable the plugin, create/select a config resource, and reopen the editor. Check the installed documentation links too.
 
