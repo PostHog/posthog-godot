@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+### Patch Changes
+
+- Publish a patch release to test the new automated release process. No SDK behavior changes.
+
 ## Unreleased
 
 ## 0.1.2 - 2026-10-28
