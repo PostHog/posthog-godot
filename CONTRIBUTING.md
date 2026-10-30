@@ -7,6 +7,10 @@
 - Optional `uv` for isolated lint/format tools
 - Node.js 22 and the pinned Godot 4.5 export templates for browser/export testing
 
+## Run the example
+
+Run this repository as a Godot project for an interactive example. It sends nothing unless `POSTHOG_API_KEY` is set in the launching environment (`POSTHOG_HOST` is optional).
+
 ## Run the tests
 
 ```sh
