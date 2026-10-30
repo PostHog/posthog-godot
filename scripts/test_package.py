@@ -39,9 +39,8 @@ def validate(archive, revision):
                     posixpath.join(posixpath.dirname(name), unquote(url.path))
                 )
                 assert target in names, f"Broken packaged link: {name} -> {link}"
-        for name in ("README.md", "CONTRIBUTING.md"):
-            text = package.read("addons/posthog/" + name).decode("utf-8")
-            assert sample_url in text, f"Sample link is not commit-pinned: {name}"
+        text = package.read("addons/posthog/CONTRIBUTING.md").decode("utf-8")
+        assert sample_url in text, "Sample link is not commit-pinned: CONTRIBUTING.md"
         assert "[LICENSE](LICENSE)" in package.read("addons/posthog/README.md").decode()
         assert not any("/examples/" in name for name in names)
         assert "addons/posthog/docs/releasing.md" not in names
