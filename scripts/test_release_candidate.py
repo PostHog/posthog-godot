@@ -182,9 +182,11 @@ class ReleaseCandidateTests(unittest.TestCase):
         metadata = json.loads((self.root / "dist/asset-library.json").read_text())
         self.assertEqual(metadata["source_commit"], revision)
         with ZipFile(self.root / "dist/posthog-godot-0.1.3.zip") as archive:
-            readme = archive.read("addons/posthog/README.md").decode()
-        self.assertIn(f"/blob/{revision}/examples/mobile_smoke/README.md", readme)
-        self.assertNotIn(f"/blob/{self.source}/examples/mobile_smoke/README.md", readme)
+            contributing = archive.read("addons/posthog/CONTRIBUTING.md").decode()
+        self.assertIn(f"/blob/{revision}/examples/mobile_smoke/README.md", contributing)
+        self.assertNotIn(
+            f"/blob/{self.source}/examples/mobile_smoke/README.md", contributing
+        )
         for entry in (self.root / "dist/SHA256SUMS").read_text().splitlines():
             digest, name = entry.split("  ")
             self.assertEqual(
