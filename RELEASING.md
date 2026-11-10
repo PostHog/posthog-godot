@@ -91,6 +91,18 @@ Inspect any existing tag/release before retrying publication. Never replace a pu
 
 After publication, download and verify the release files. Install the ZIP into a fresh Godot 4.5+ project (4.5.1+ on macOS), enable the plugin, create/select a config resource, and reopen the editor. Check the installed documentation links too.
 
+### Failed or cancelled release
+
+The independent [release failure notification workflow](.github/workflows/release-failure-notification.yml) checks every completed main-branch release attempt. It alerts if a job failed, timed out, or was cancelled, and if the publish job never ran in a failed run. This covers runner startup failures and runs that GitHub Actions ends early, which the in-run result job cannot report.
+
+It stays quiet when the in-run result job already delivered the failure or rejection reply. It still alerts if that reply failed, or if the GitHub release exists but the released Slack reply was skipped. Once the release exists, alerts describe follow-up problems rather than claiming the release failed.
+
+Cancelled runs with no jobs are ignored, including superseded queued runs. A rejected approval is also ignored when the rejection reply was delivered and no other job failed.
+
+If job inspection still fails after three retries, the workflow posts a fallback alert with the overall run status and a logs link so the release can be checked manually.
+
+Alerts reply to the approval thread. The release workflow saves the thread timestamp in a run artifact for 30 days, independently of approval. Failed-job reruns reuse the latest available thread. If the timestamp is missing or invalid, the alert is a new channel message. The workflow must be on the default branch to run.
+
 ## Submit to the Godot Asset Library
 
 Submission requires a registered maintainer account and manual review. There is no automated submission or stored Asset Library credential in this repository.
