@@ -64,10 +64,7 @@ module.exports = async function releaseFailureNotification({ github, context, ch
     }
 
     const releaseCreated = publish?.conclusion === 'success';
-    const alertedInRun = stepSucceeded('Notify Slack - Failed');
-    const problems = failedJobs
-        .filter(job => !(alertedInRun && job !== resultJob))
-        .map(job => `• <${job.html_url}|${job.name}>: ${job.conclusion}`);
+    const problems = failedJobs.map(job => `• <${job.html_url}|${job.name}>: ${job.conclusion}`);
 
     if (run.conclusion !== 'success' && failedJobs.length === 0 && !publish) {
         problems.push(`• ${publishJobName}: never ran`);
@@ -77,7 +74,7 @@ module.exports = async function releaseFailureNotification({ github, context, ch
         problems.push('• The released Slack notification did not run.');
     }
 
-    if (problems.length === 0 && (run.conclusion === 'success' || alertedInRun)) {
+    if (problems.length === 0 && run.conclusion === 'success') {
         return null;
     }
 

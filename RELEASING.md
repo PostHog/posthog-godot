@@ -25,7 +25,7 @@ The job sequence is `prepare-candidate` → `verify` → `notify-approval-needed
 5. The same approved job checks out the signed commit and requires its Git tree to match the tested candidate. It then builds and validates the final addon ZIP and generates `SHA256SUMS` and `asset-library.json`. Packaging happens after the commit so repository documentation links, the icon URL, and source metadata contain the **final commit SHA**, not the candidate's parent. No source changes are made after verification.
 6. The job verifies checksums, version, and source SHA, creates the unprefixed tag at that commit, and publishes the experimental prerelease. An existing tag is accepted only if it resolves to the same commit. Release creation does not overwrite an existing release.
 
-No other job has the App credentials, and there is no second environment or approval. The Slack approval thread receives messages and reactions for approval (✅), successful publication (🚀), failure/cancellation (❌), or rejection (🚫). Rejected approvals do not send a PostHog failure event; workflow failures still do.
+No other job has the App credentials, and there is no second environment or approval. The Slack approval thread receives messages and reactions for approval (✅), successful publication (🚀), or rejection (🚫). Failures and cancellations are reported by the failure notification workflow below. Rejected approvals do not send a PostHog failure event; workflow failures still do.
 
 ## One-time repository setup
 
@@ -95,9 +95,11 @@ After publication, download and verify the release files. Install the ZIP into a
 
 The independent [release failure notification workflow](.github/workflows/release-failure-notification.yml) checks every completed main-branch release attempt. It alerts if a job failed, timed out, or was cancelled, and if the publish job never ran in a failed run. This covers runner startup failures and runs that GitHub Actions ends early, which the in-run result job cannot report.
 
-It stays quiet when the in-run result job already delivered the failure or rejection reply. It still alerts if that reply failed, or if the GitHub release exists but the released Slack reply was skipped. Once the release exists, alerts describe follow-up problems rather than claiming the release failed.
+It stays quiet when the in-run result job already delivered the rejection reply. It alerts for any failed job, and if the GitHub release exists but the released Slack reply was skipped. Once the release exists, alerts describe follow-up problems rather than claiming the release failed.
 
 Cancelled runs with no jobs are ignored, including superseded queued runs. A rejected approval is also ignored when the rejection reply was delivered and no other job failed.
+
+Run the notifier tests with `node --test scripts/release-failure-notification.test.cjs`.
 
 If job inspection still fails after three retries, the workflow posts a fallback alert with the overall run status and a logs link so the release can be checked manually.
 
