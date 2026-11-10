@@ -1,4 +1,7 @@
 const test = require('node:test');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const assert = require('node:assert/strict');
 const releaseFailureNotification = require('./release-failure-notification.cjs');
 
@@ -14,7 +17,7 @@ const job = (name, conclusion, steps = [{ name: 'Set up job', conclusion: 'succe
 
 const step = (name, conclusion) => ({ name, conclusion });
 
-async function run({ conclusion, jobs }) {
+async function run({ conclusion, jobs, threadDirectory, attempt = 1 }) {
     const github = {
         paginate: async () => jobs,
         rest: { actions: { listJobsForWorkflowRunAttempt: () => {} } },
@@ -24,13 +27,13 @@ async function run({ conclusion, jobs }) {
         payload: {
             workflow_run: {
                 id: 1,
-                run_attempt: 1,
+                run_attempt: attempt,
                 conclusion,
                 html_url: 'https://github.com/PostHog/posthog-godot/actions/runs/1',
             },
         },
     };
-    return releaseFailureNotification({ github, context, channel: 'C123' });
+    return releaseFailureNotification({ github, context, channel: 'C123', threadDirectory });
 }
 
 test('stays quiet when the run succeeded', async () => {
@@ -77,4 +80,31 @@ test('alerts when the release exists but the released notice was skipped', async
     });
     assert.match(result.text, /GitHub release published; follow-up problems/);
     assert.match(result.text, /released Slack notification did not run/);
+});
+
+const failedRun = { conclusion: 'failure', jobs: [job(publishName, 'failure'), job(resultName, 'success')] };
+
+function threadDirectory(layout) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'thread-'));
+    for (const [file, value] of Object.entries(layout)) {
+        fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+        fs.writeFileSync(path.join(dir, file), value);
+    }
+    return dir;
+}
+
+test('replies in the thread when a lone artifact is extracted flat', async () => {
+    const dir = threadDirectory({ 'thread-ts.txt': '1700000000.123456\n' });
+    const result = await run({ ...failedRun, threadDirectory: dir });
+    assert.equal(result.thread_ts, '1700000000.123456');
+});
+
+test('picks the newest attempt not above the current one from subdirectories', async () => {
+    const dir = threadDirectory({
+        'release-slack-thread-1/thread-ts.txt': '1700000001.000001',
+        'release-slack-thread-2/thread-ts.txt': '1700000002.000002',
+        'release-slack-thread-3/thread-ts.txt': '1700000003.000003',
+    });
+    const result = await run({ ...failedRun, threadDirectory: dir, attempt: 2 });
+    assert.equal(result.thread_ts, '1700000002.000002');
 });

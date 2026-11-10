@@ -93,7 +93,7 @@ After publication, download and verify the release files. Install the ZIP into a
 
 ### Failed or cancelled release
 
-The independent [release failure notification workflow](.github/workflows/release-failure-notification.yml) checks every completed main-branch release attempt. It alerts if a job failed, timed out, or was cancelled, and if the publish job never ran in a failed run. This covers runner startup failures and runs that GitHub Actions ends early, which the in-run result job cannot report.
+The independent [release failure notification workflow](.github/workflows/release-failure-notification.yml) checks every completed main-branch release attempt. It alerts if a job failed, timed out, or was cancelled, and if the publish job never ran in a failed run. This covers runner startup failures and runs that GitHub Actions ends early, which the in-run result job cannot report. It only acts on runs that a push or a manual dispatch started in this repository.
 
 It stays quiet when the in-run result job already delivered the rejection reply. It alerts for any failed job, and if the GitHub release exists but the released Slack reply was skipped. Once the release exists, alerts describe follow-up problems rather than claiming the release failed.
 
