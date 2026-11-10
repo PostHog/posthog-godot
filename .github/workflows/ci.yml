@@ -85,10 +85,14 @@ jobs:
           ruff format --check scripts
       - name: Headless unit, HTTP, editor, and packaging tests
         run: python scripts/test.py
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
       - name: Installer and release tooling tests (no publishing)
         run: |
           python scripts/test_install_godot.py
           python -m unittest discover -s scripts -p 'test_release*.py'
+          node --test scripts/release-failure-notification.test.cjs
       - name: Real desktop release exports and stacktrace tests
         run: python scripts/test_exports.py
       - name: Example smoke test (no API key)

@@ -25,7 +25,7 @@ The job sequence is `prepare-candidate` → `verify` → `notify-approval-needed
 5. The same approved job checks out the signed commit and requires its Git tree to match the tested candidate. It then builds and validates the final addon ZIP and generates `SHA256SUMS` and `asset-library.json`. Packaging happens after the commit so repository documentation links, the icon URL, and source metadata contain the **final commit SHA**, not the candidate's parent. No source changes are made after verification.
 6. The job verifies checksums, version, and source SHA, creates the unprefixed tag at that commit, and publishes the experimental prerelease. An existing tag is accepted only if it resolves to the same commit. Release creation does not overwrite an existing release.
 
-No other job has the App credentials, and there is no second environment or approval. The Slack approval thread receives messages and reactions for approval (✅), successful publication (🚀), failure/cancellation (❌), or rejection (🚫). Rejected approvals do not send a PostHog failure event; workflow failures still do.
+No other job has the App credentials, and there is no second environment or approval. The Slack approval thread receives messages and reactions for approval (✅), successful publication (🚀), or rejection (🚫). Failures and cancellations are reported by the failure notification workflow below. Rejected approvals do not send a PostHog failure event; workflow failures still do.
 
 ## One-time repository setup
 
@@ -90,6 +90,20 @@ If publication fails **after the version commit**, fix the underlying infrastruc
 Inspect any existing tag/release before retrying publication. Never replace a published release, overwrite its assets, move a tag, or disable signing to work around a failure. Candidate patches are retained for five days. If an artifact expires before any commit, dispatch a fresh candidate; if the version commit already exists, ship a new version rather than synthesizing an unverified patch.
 
 After publication, download and verify the release files. Install the ZIP into a fresh Godot 4.5+ project (4.5.1+ on macOS), enable the plugin, create/select a config resource, and reopen the editor. Check the installed documentation links too.
+
+### Failed or cancelled release
+
+The independent [release failure notification workflow](.github/workflows/release-failure-notification.yml) checks every completed main-branch release attempt. It alerts if a job failed, timed out, or was cancelled, and if the publish job never ran in a failed run. This covers runner startup failures and runs that GitHub Actions ends early, which the in-run result job cannot report. It only acts on runs that a push or a manual dispatch started in this repository.
+
+It stays quiet when the in-run result job already delivered the rejection reply. It alerts for any failed job, and if the GitHub release exists but the released Slack reply was skipped. Once the release exists, alerts describe follow-up problems rather than claiming the release failed.
+
+Cancelled runs with no jobs are ignored, including superseded queued runs. A rejected approval is also ignored when the rejection reply was delivered and no other job failed.
+
+Run the notifier tests with `node --test scripts/release-failure-notification.test.cjs`.
+
+If job inspection still fails after three retries, the workflow posts a fallback alert with the overall run status and a logs link so the release can be checked manually.
+
+Alerts reply to the approval thread. The release workflow saves the thread timestamp in a run artifact for 30 days, independently of approval. Failed-job reruns reuse the latest available thread. If the timestamp is missing or invalid, the alert is a new channel message. The workflow must be on the default branch to run.
 
 ## Submit to the Godot Asset Library
 
