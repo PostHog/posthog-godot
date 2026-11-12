@@ -27,6 +27,7 @@ func _run() -> void:
 	await _test_cached_flags_and_corruption()
 	await _test_queue()
 	await _test_flags()
+	await preload("test_failed_flags.gd").run(self)
 	await _test_flag_races()
 	await _test_lifecycle_and_errors()
 	preload("test_error_logger.gd").run(check)
