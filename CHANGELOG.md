@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+### Patch Changes
+
+- Treat failed feature flag records as unavailable, honor caller defaults, and report evaluation errors without exposing failed values or payloads. Retain successful cached flags on response-wide evaluation errors while continuing to replace state on complete successful refreshes.
+
 ## 0.1.3
 
 ### Patch Changes
