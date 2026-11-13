@@ -63,16 +63,19 @@ func get_flag(key: String, send_event: bool = true) -> PostHogFeatureFlag:
 			details.get("metadata", {}) if details.get("metadata") is Dictionary else {}
 		)
 		flag.metadata = metadata.duplicate(true)
-		if details.get("enabled") is bool:
+		if details.get("failed") == true:
+			flag.metadata.erase("payload")
+		if details.get("failed") != true and details.get("enabled") is bool:
 			flag.value = (
 				details.get("variant")
 				if details.enabled and details.get("variant") is String
 				else details.enabled
 			)
-		flag.payload = metadata.get("payload")
+		if details.get("failed") != true:
+			flag.payload = metadata.get("payload")
 	elif legacy.get(key) is bool or legacy.get(key) is String:
 		flag.value = legacy[key]
-	if flag.payload == null:
+	if flag.payload == null and details.get("failed") != true:
 		var payloads: Dictionary = _cache.get("featureFlagPayloads", {})
 		flag.payload = payloads.get(key)
 	if flag.payload is String:
@@ -81,7 +84,12 @@ func get_flag(key: String, send_event: bool = true) -> PostHogFeatureFlag:
 			flag.payload = json.data
 	if flag.payload is Dictionary or flag.payload is Array:
 		flag.payload = flag.payload.duplicate(true)
-	if enabled and send_event and config.send_feature_flag_event and flag.has_value:
+	if (
+		enabled
+		and send_event
+		and config.send_feature_flag_event
+		and (flag.has_value or details.get("failed") == true)
+	):
 		_track(flag, details)
 	return flag
 
@@ -127,7 +135,30 @@ func _apply(response: Dictionary) -> bool:
 	for field in ["flags", "featureFlags", "featureFlagPayloads"]:
 		if response.has(field) and not response[field] is Dictionary:
 			return false
-	_cache = response.duplicate(true)
+	var incoming := response.duplicate(true)
+	var fields := ["flags", "featureFlags", "featureFlagPayloads"]
+	for field in fields:
+		if not incoming.has(field):
+			incoming[field] = {}
+	var merge: bool = response.get("errorsWhileComputingFlags") == true
+	for key in incoming.flags.keys():
+		var details: Variant = incoming.flags[key]
+		if details is Dictionary and details.get("failed") == true:
+			incoming.featureFlags.erase(key)
+			incoming.featureFlagPayloads.erase(key)
+			if merge and get_flag(key, false).has_value:
+				incoming.flags.erase(key)
+	if merge:
+		# Replace each incoming pair together, retaining only untouched successful pairs.
+		var keys: Dictionary = incoming.flags.duplicate()
+		keys.merge(incoming.featureFlags)
+		for field in fields:
+			var previous: Dictionary = _cache.get(field, {}).duplicate(true)
+			for key in keys:
+				previous.erase(key)
+			previous.merge(incoming[field], true)
+			incoming[field] = previous
+	_cache = incoming
 	is_loaded = true
 	return true
 
@@ -140,6 +171,13 @@ func _track(flag: PostHogFeatureFlag, details: Dictionary) -> void:
 		_called.erase(_called.keys()[0])
 	_called[token] = true
 	var properties := {"$feature_flag": flag.key, "$feature_flag_response": flag.value}
+	var errors: Array[String] = []
+	if details.get("failed") == true and not flag.has_value:
+		errors.append("evaluation_failed")
+	if _cache.get("errorsWhileComputingFlags") == true:
+		errors.append("errors_while_computing_flags")
+	if not errors.is_empty():
+		properties["$feature_flag_error"] = ",".join(errors)
 	if _cache.has("requestId"):
 		properties["$feature_flag_request_id"] = _cache.requestId
 	if _cache.has("evaluatedAt"):
