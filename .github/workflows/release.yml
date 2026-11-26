@@ -34,7 +34,7 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
-      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+      - uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
         with:
           version: 11.13.1
           runtime: node@24
@@ -161,7 +161,7 @@ jobs:
         run: |
           python scripts/release_candidate.py dist/release-candidate/release.patch \
             --source "$SOURCE_SHA" --sha256 "$PATCH_SHA256" --tree "$TREE_SHA" --version "$VERSION"
-      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+      - uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         id: releaser
         with:
           client-id: ${{ secrets.GH_APP_POSTHOG_GODOT_RELEASER_APP_ID }}
